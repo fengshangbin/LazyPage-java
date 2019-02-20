@@ -25,16 +25,16 @@ public class LazyPageServlet extends HttpServlet {
     	String serverPath = request.getServletPath();
     	String filePath = this.getServletContext().getRealPath(serverPath);
     	String html = readToString(filePath);
-    	boolean isAjax = false;
+    	boolean isSpider = true;
     	if(cookies!=null){
 	    	for (Cookie cookie : cookies) {
-	    		if(cookie.getName().equals("LazyPageAjax"))isAjax=true;
+	    		if(cookie.getName().equals("LazyPageSpider"))isSpider=false;
 	    	}
     	}
     	response.setCharacterEncoding("utf-8");
     	response.setContentType("text/html");
         PrintWriter writer = response.getWriter();
-        if(!isAjax){
+        if(isSpider){
         	String result = new AnalyzeHtml().parse(url, query, html);
             writer.print(result);
         }else{
