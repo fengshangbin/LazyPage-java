@@ -22,6 +22,12 @@ public class LazyPage {
 		init(context, "", scanChildrenDirectory);
 	}
 	
+	/**
+	 * LazyPage初始化方法，请在web初始化时调用如ServletContextListener实例的contextInitialized中
+	 * @param  context  Servlet上下文Context
+	 * @param  htmlPath  html文件所在目录，默认为web跟目录
+	 * @param  scanChildrenDirectory  是否扫描子目录中的html文件，默认为false
+	 */
 	public static void init(ServletContext context, String htmlPath, boolean scanChildrenDirectory){
 		ServletRegistration.Dynamic dynamicServlet=context.addServlet("lazyPageServlet", LazyPageServlet.class);
 		File file = new File(context.getRealPath(htmlPath));
@@ -34,6 +40,10 @@ public class LazyPage {
         dynamicServlet.setLoadOnStartup(1);
 	}
 	
+	/**
+	 * 注册全局脚本文件，请在web初始化时调用
+	 * @param  jsPath  脚本文件路径
+	 */
 	public static void addJsFile(String jsPath){
 		jsPaths.add(jsPath);
 	}

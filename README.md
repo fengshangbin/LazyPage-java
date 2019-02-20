@@ -6,6 +6,7 @@ LazyPage server jave version
 1，拷贝lazypage.jar到你的项目  
 2，在项目初始化时 执行LazyPage初始化 LazyPage.init(context)  
 ### LazyPage方法说明
+```
 /**
  * LazyPage初始化方法，请在web初始化时调用如ServletContextListener实例的contextInitialized中
  * @param  context  Servlet上下文Context
@@ -19,3 +20,4 @@ void init(ServletContext context, String htmlPath, boolean scanChildrenDirectory
  * @param  jsPath  脚本文件路径
  */
 void addJsFile(String jsPath)
+```
