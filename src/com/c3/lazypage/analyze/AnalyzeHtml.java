@@ -8,6 +8,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.servlet.http.Cookie;
+
 import com.c3.lazypage.entity.Block;
 import com.c3.lazypage.entity.Document;
 import com.c3.lazypage.servlet.LazyPageServlet;
@@ -19,27 +21,39 @@ public class AnalyzeHtml {
 	private String rootPath;
 	private String[] paths;
 	private String query;
+	private String[] pathParams;
+	private Cookie[] cookies;
 	public AnalyzeHtml(){
 		//doc = new Document(html);
 	}
 	public static void main(String[] args) {
 		String html = LazyPageServlet.readToString("D:\\js project tools\\lazypage\\examples\\index.html");
 		AnalyzeHtml analyzeHtml = new AnalyzeHtml();
-		String outHtml = analyzeHtml.parse("http://localhost:8080/J2EEWebTest/index.html", "id=20", html);
+		String outHtml = analyzeHtml.parse("http://localhost:8080/J2EEWebTest/index.html", "id=20", html, null, null);
 		System.out.println(outHtml);
 	}
-	public String parse(String path, String query, String html){
+	public String parse(String path, String query, String html, String[] pathParams, Cookie[] cookies){
 		doc = new Document(html);
 		this.rootPath = getRootPath(path);
-		this.paths = path.replaceAll("("+rootPath+"/?)|([/?]$)", "").split("/");
-		if(paths.length>0 && paths[paths.length-1].indexOf(".")>-1){
+		path = path.replaceAll("("+rootPath+"/?)", "");
+		if(path.endsWith("/"))path+="end";
+		this.paths = path.split("/");
+		//this.paths = path.replaceAll("("+rootPath+"/?)", "");
+		if(paths.length>0){
 			paths = Arrays.copyOf(paths, paths.length-1);
 		}
 		this.query = query;
+		this.pathParams = pathParams;
+		this.cookies = cookies;
 		checkBlocks(doc);
-		String result = doc.getHtml();
+		String result = doc.getHtml().replaceAll("x-tmpl-lazypage-tag", "x-tmpl-lazypage");
 		if(!dataMap.isEmpty()){
-			result+="<script>"+dataMap.toString("LazyPage.data")+"</script>";
+			int bodyEnd = result.lastIndexOf("</body>");
+			if(bodyEnd>0){
+				result = result.substring(0, bodyEnd)+"<script>"+dataMap.toString("LazyPage.data")+"</script>\n"+result.substring(bodyEnd);
+			}else{
+				result += "\n<script>"+dataMap.toString("LazyPage.data")+"</script>";
+			}
 		}
 		return result;
 	}
@@ -86,9 +100,11 @@ public class AnalyzeHtml {
 			//System.out.println("+++"+block.getAttrHtml());
 			runBlock(block);
 		}
+		//System.out.println("continueCheck: "+continueCheck);
 		if(continueCheck == true)checkBlocks(doc);
 	}
 	private void addModeData(Block block, String data){
+		if(data==null)return;
 		block.setData(data);
 		String id = block.getAttribute("id");
 		if(id!=null){
@@ -140,6 +156,28 @@ public class AnalyzeHtml {
 		m.appendTail(sb);
 		return sb.toString();
 	}
+
+	private String getPathString(String index){
+		if(pathParams==null)return "";
+		int i = Integer.parseInt(index);
+		if(i>=0 && i<pathParams.length){
+			return pathParams[i];
+		}
+		return "";
+	}
+	private String replacePath(String str){
+		if(str==null)return null;
+		String regStr = "\\{\\$([^\\}]*?)\\}";
+		Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
+		Matcher m = pattern.matcher(str);
+		StringBuffer sb = new StringBuffer();
+		while (m.find()) {
+			String key = m.group(1);
+			m.appendReplacement(sb, getPathString(key));
+		}
+		m.appendTail(sb);
+		return sb.toString();
+	}
 	/*private String replaceModeDataString(String str){
 		if(str==null)return null;
 		String regStr = "{@([^}]*?)}";
@@ -167,8 +205,9 @@ public class AnalyzeHtml {
 				String ajaxType = block.getAttribute("ajax-type");
 				String ajaxData = block.getAttribute("ajax-data");
 				ajaxData=replaceQuery(ajaxData);
+				ajaxData=replacePath(ajaxData);
 				ajaxData=replaceModeData(ajaxData);
-				String result = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData);
+				String result = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData, cookies);
 				addModeData(block, result);
 				//renderDom(block);
 			}
@@ -176,7 +215,7 @@ public class AnalyzeHtml {
 			addModeData(block, "{}");
 		}
 		if(src!=null&&src!=""){
-			String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null);
+			String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null, cookies);
 			block.setHtml(result);
 			renderDom(block);
 		}else{

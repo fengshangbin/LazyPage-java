@@ -11,15 +11,23 @@ import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.servlet.http.Cookie;
+
 public class LazyHttpProxy {
 	public static void main(String[] args) {
-		String path = "Https://abc.com/haha/ni/o.html";
+		String path = "Https://abc.com/haha/ni";
 		String rootPath = getRootPath(path);
-		String[] paths = path.replaceAll("("+rootPath+"/?)|([/?]$)", "").split("/");
-		if(paths.length>0 && paths[paths.length-1].indexOf(".")>-1){
+		path = path.replaceAll("("+rootPath+"/?)", "");
+		if(path.endsWith("/"))path+="end";
+		String[] paths = path.split("/");
+		/*System.out.println(path.replaceAll("("+rootPath+"/?)", ""));
+		System.out.println(String.join("/", path.replaceAll("("+rootPath+"/?)", "").split("/")));
+		System.out.println(path.replaceAll("("+rootPath+"/?)", "").split("/").length);*/
+		if(paths.length>0){
 			paths = Arrays.copyOf(paths, paths.length-1);
 		}
-		System.out.println(getRealUrl(rootPath, paths, "a1.data"));
+		//System.out.println(String.join("/", paths));
+		//System.out.println(getRealUrl(rootPath, paths, "a1.data"));
 	}
 	private static String getRealUrl(String rootPath, String[] paths, String url){
 		if(checkUrl(url))return url;
@@ -63,7 +71,10 @@ public class LazyHttpProxy {
 		}
 		return null;
 	}
-	public static String ajax(String rootPath, String[] paths, String method, String urlString, String parameters) {
+	public static String ajax(String rootPath, String[] paths, String method, String urlString, String parameters, Cookie[] cookies) {
+		/*System.out.println("rootPath: "+rootPath);
+		System.out.println("paths: "+String.join("/", paths));
+		System.out.println("ajax urlString: "+urlString);*/
 		if(method==null)method="GET";
 		method = method.toUpperCase();
 		urlString = getRealUrl(rootPath, paths, urlString);
@@ -85,6 +96,18 @@ public class LazyHttpProxy {
 			urlConnection.setUseCaches(false);
 			urlConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 			urlConnection.setRequestProperty("Charset", "UTF-8");
+			if(cookies!=null){
+				StringBuffer cookiesBuffer = new StringBuffer();
+				for (Cookie cookie : cookies) {
+					cookiesBuffer.append(cookie.getName());
+					cookiesBuffer.append("=");
+					cookiesBuffer.append(cookie.getValue());
+					cookiesBuffer.append("; ");
+				}
+				String cookie = cookiesBuffer.toString();
+				//System.out.println(urlString+": "+cookie.substring(0, cookie.length()-2));
+				urlConnection.setRequestProperty("Cookie", cookie.substring(0, cookie.length()-2));
+			}
 			urlConnection.setConnectTimeout(15000);
 			urlConnection.setReadTimeout(15000);
 			urlConnection.connect();
@@ -98,7 +121,7 @@ public class LazyHttpProxy {
 			int resultCode = urlConnection.getResponseCode();
 			if (HttpURLConnection.HTTP_OK == resultCode) {
 				InputStream in = urlConnection.getInputStream();
-				reader = new BufferedReader(new InputStreamReader(in, "utf-8"));
+				reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
 				temp = new StringBuffer();
 				String line = reader.readLine();
 				while (line != null) {

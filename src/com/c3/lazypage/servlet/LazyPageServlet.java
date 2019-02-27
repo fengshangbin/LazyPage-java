@@ -19,11 +19,25 @@ public class LazyPageServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    	response.setCharacterEncoding("utf-8");
+    	response.setContentType("text/html");
+        PrintWriter writer = response.getWriter();
     	Cookie[] cookies = request.getCookies();
     	String query = request.getQueryString();
     	String url = request.getRequestURL().toString();
     	String serverPath = request.getServletPath();
-    	String filePath = this.getServletContext().getRealPath(serverPath);
+    	String pathInfo = request.getPathInfo();
+    	String filePath="";
+    	if(pathInfo!=null && !pathInfo.isEmpty() && !pathInfo.equals("/")){
+    		serverPath+="/*";
+    	}
+    	if(LazyPage.map.containsKey(serverPath)){
+    		filePath = LazyPage.map.get(serverPath);
+    	}else{
+    		writer.print("This request URL " + serverPath + " was not found on this server.");
+    		return;
+    	}
+    	//String filePath = this.getServletContext().getRealPath(serverPath);
     	String html = readToString(filePath);
     	boolean isSpider = true;
     	if(cookies!=null){
@@ -31,11 +45,8 @@ public class LazyPageServlet extends HttpServlet {
 	    		if(cookie.getName().equals("LazyPageSpider"))isSpider=false;
 	    	}
     	}
-    	response.setCharacterEncoding("utf-8");
-    	response.setContentType("text/html");
-        PrintWriter writer = response.getWriter();
         if(isSpider){
-        	String result = new AnalyzeHtml().parse(url, query, html);
+        	String result = new AnalyzeHtml().parse(url, query, html, null, null);
             writer.print(result);
         }else{
         	writer.print(html);
