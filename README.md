@@ -1,6 +1,7 @@
 # LazyPage-java
-LazyPage server jave version 
-LazyPage后端java版本
+LazyPage server jave version  
+LazyPage后端java版本  
+GitHub Pages: https://github.com/fengshangbin/LazyPage-java
 # 关于LazyPage
 参见 https://github.com/fengshangbin/LazyPage
 # 如何使用LazyPage-java
