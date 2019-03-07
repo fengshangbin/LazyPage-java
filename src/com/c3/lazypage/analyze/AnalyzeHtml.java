@@ -74,7 +74,7 @@ public class AnalyzeHtml {
 			Block block = blocks.get(i);
 			if(block.getRunStated() > 0)continue;
 			String lazyStr = block.getAttribute("lazy");
-			if(lazyStr!=null && lazyStr!="false"){
+			if(lazyStr!=null && !lazyStr.equals("false")){
 				//lazyCount++;
 				continue;
 			}
@@ -231,7 +231,7 @@ public class AnalyzeHtml {
 		if(html==null||data==null)return;
 		//System.out.println(data);
 		//System.out.println(dataMap.toString());
-		String out = LazyScriptEngine.run(html, data, dataMap.toString());
+		String out = LazyScriptEngine.run(html, dataMap.toString(), data);
 		//System.out.println("---"+block.getAttrHtml()+"------"+out);
 		block.setOutHtml(out);
 		//block=null;

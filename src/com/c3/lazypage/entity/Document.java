@@ -24,7 +24,7 @@ public class Document {
 		//System.out.println(html);
 		Document doc = new Document(html);
 		doc.queryBlocks();
-		System.out.println(doc.getHtml());
+		//System.out.println(doc.getHtml());
 	}
 	public Vector<Block> queryBlocks(){
 		removeFinishBlocks();

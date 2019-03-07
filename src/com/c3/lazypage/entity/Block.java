@@ -106,6 +106,7 @@ public class Block {
 		int newLength = value.length();
 		int offLength = newLength-oldLength;
 		String newAttr = oldAttr[0].replace(oldAttr[1], value);
+		//System.out.println(attrHtml+"---"+oldAttr[0]+"---"+newAttr);
 		attrHtml = attrHtml.replace(oldAttr[0], newAttr);
 		String oldHtml = document.getHtml();
 		document.setHtml(oldHtml.substring(0, start) + attrHtml + oldHtml.substring(start+attrHtml.length()-offLength));

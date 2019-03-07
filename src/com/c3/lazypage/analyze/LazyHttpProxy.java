@@ -15,7 +15,7 @@ import javax.servlet.http.Cookie;
 
 public class LazyHttpProxy {
 	public static void main(String[] args) {
-		String path = "Https://abc.com/haha/ni";
+		String path = "https://www.baidu.com";
 		String rootPath = getRootPath(path);
 		path = path.replaceAll("("+rootPath+"/?)", "");
 		if(path.endsWith("/"))path+="end";
@@ -27,7 +27,9 @@ public class LazyHttpProxy {
 			paths = Arrays.copyOf(paths, paths.length-1);
 		}
 		//System.out.println(String.join("/", paths));
-		//System.out.println(getRealUrl(rootPath, paths, "a1.data"));
+		System.out.println(getRealUrl(rootPath, paths, "/a1.data"));
+		String result = ajax(rootPath, paths, null, "", null, null);
+		System.out.println(result);
 	}
 	private static String getRealUrl(String rootPath, String[] paths, String url){
 		if(checkUrl(url))return url;

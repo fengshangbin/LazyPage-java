@@ -1,4 +1,9 @@
 var baidu = {};
+var LazyPage = LazyPage || {"data":null};
+if(typeof global !== 'undefined'){
+	global.baidu = baidu;
+	global.LazyPage = LazyPage;
+}
 baidu.template = function(str, data) {
 	var fn = bt._compile(str);
 	var result = fn(data).replace(/<&([^&]*?)&>/g, '<%$1%>').replace(/<&&/g, '<&').replace(/&&>/g, '&>');
@@ -86,15 +91,15 @@ bt._analysisStr = function(str) {
 		.split("\r").join("\\'");
 	return str;
 };
-var LazyPage = {"data":null};
-function run(str, data, modeData){
-	data = JSON.parse(data);
+function run(str, allData, modeData){
+	if(typeof(allData)=="string")allData = JSON.parse(allData);
+	LazyPage.data = allData;
 	var result = "";
 	if(modeData != null){
-		LazyPage.data = JSON.parse(modeData);
-		result = baidu.template(str, data);
+		if(typeof(modeData)=="string")modeData = JSON.parse(modeData);
+		//console.log(modeData);
+		result = baidu.template(str, modeData);
 	}else{
-		LazyPage.data = data;
 		result = eval("LazyPage.data."+str);
 	}
 	str = null;
@@ -103,4 +108,8 @@ function run(str, data, modeData){
 	LazyPage.data = null;
 	return result;
 };
-run(str, data, modeData);
+if(typeof module === 'undefined'){
+	run(str, data, modeData);
+}else{
+	module.exports=run;
+}
