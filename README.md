@@ -7,6 +7,7 @@ GitHub Pages: https://github.com/fengshangbin/LazyPage-java
 # 如何使用LazyPage-java
 1，引入lazypage.jar到你的项目  
 2，在项目初始化时 执行LazyPage初始化 LazyPage.init(context)  
+3, 注册全局格式化函数 LazyPage.addJsFile("/js/format.js");
 注: 需要Java EE version -> JavaEE 7 - Web 3.1
 ### LazyPage类方法说明
 ```
