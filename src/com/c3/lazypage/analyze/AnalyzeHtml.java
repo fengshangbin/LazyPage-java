@@ -27,10 +27,17 @@ public class AnalyzeHtml {
 		//doc = new Document(html);
 	}
 	public static void main(String[] args) {
-		String html = LazyPageServlet.readToString("D:\\js project tools\\lazypage\\examples\\index.html");
+		/*String html = LazyPageServlet.readToString("D:\\js project tools\\lazypage\\examples\\index-.html");
 		AnalyzeHtml analyzeHtml = new AnalyzeHtml();
 		String outHtml = analyzeHtml.parse("http://localhost:8080/J2EEWebTest/index.html", "id=20", html, null, null);
-		System.out.println(outHtml);
+		System.out.println(outHtml);*/
+		String name="q";
+		String reg = "(^|&)"+ name +"=([^&]*)(&|$)";
+		Pattern pattern = Pattern.compile(reg, Pattern.CASE_INSENSITIVE);
+		Matcher m = pattern.matcher("q=city");
+		if(m.find()){
+			System.out.println(m.group(2));
+		}
 	}
 	public String parse(String path, String query, String html, String[] pathParams, Cookie[] cookies){
 		doc = new Document(html);
@@ -130,27 +137,31 @@ public class AnalyzeHtml {
 		}
 		return "";
 	}
-	private String replaceQuery(String str){
+	private String replaceQuery(String str, boolean isString){
 		if(str==null)return null;
-		String regStr = "\\{&([^\\}]*?)\\}";
-		Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
+		String regStr = "\\{&(.*?)\\}";
+		Pattern pattern = Pattern.compile(regStr);
 		Matcher m = pattern.matcher(str);
 		StringBuffer sb = new StringBuffer();
 		while (m.find()) {
 			String key = m.group(1);
-			m.appendReplacement(sb, getQueryString(key));
+			String value = getQueryString(key);
+			if(!isString)value = '"' + value + '"';
+			m.appendReplacement(sb, value);
 		}
 		m.appendTail(sb);
 		return sb.toString();
 	}
-	private String replaceModeData(String str){
+	private String replaceModeData(String str, boolean isString){
 		if(str==null)return null;
-		String regStr = "\\{@([^\\}]*?)\\}";
-		Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
+		String regStr = "\\{@(.*?)\\}";
+		Pattern pattern = Pattern.compile(regStr);
 		Matcher m = pattern.matcher(str);
 		StringBuffer sb = new StringBuffer();
 		while (m.find()) {
-			String value = LazyScriptEngine.run(m.group(1), dataMap.toString(), null);
+			System.out.println(m.group(1));
+			System.out.println(dataMap.toString());
+			String value = LazyScriptEngine.run(m.group(1), dataMap.toString(), "\""+isString+"\"");
 			m.appendReplacement(sb, value);
 		}
 		m.appendTail(sb);
@@ -165,31 +176,27 @@ public class AnalyzeHtml {
 		}
 		return "";
 	}
-	private String replacePath(String str){
+	private String replacePath(String str, boolean isString){
 		if(str==null)return null;
-		String regStr = "\\{\\$([^\\}]*?)\\}";
-		Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
+		String regStr = "\\{\\$(.*?)\\}";
+		Pattern pattern = Pattern.compile(regStr);
 		Matcher m = pattern.matcher(str);
 		StringBuffer sb = new StringBuffer();
 		while (m.find()) {
 			String key = m.group(1);
-			m.appendReplacement(sb, getPathString(key));
+			String value = getPathString(key);
+			if(!isString)value = '"' + value + '"';
+			m.appendReplacement(sb, value);
 		}
 		m.appendTail(sb);
 		return sb.toString();
 	}
-	/*private String replaceModeDataString(String str){
-		if(str==null)return null;
-		String regStr = "{@([^}]*?)}";
-		Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
-		Matcher m = pattern.matcher(str);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			m.appendReplacement(sb, "LazyPage.data."+m.group(1));
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}*/
+	private String replaceParamAsValue(String html, boolean isString) {
+		html=replaceQuery(html, isString);
+		html=replacePath(html, isString);
+		html=replaceModeData(html, isString);
+	    return html;
+	}
 	private void runBlock(Block block){
 		block.setRunStated(1);
 		String src = block.getAttribute("src");
@@ -204,9 +211,8 @@ public class AnalyzeHtml {
 			}else{
 				String ajaxType = block.getAttribute("ajax-type");
 				String ajaxData = block.getAttribute("ajax-data");
-				ajaxData=replaceQuery(ajaxData);
-				ajaxData=replacePath(ajaxData);
-				ajaxData=replaceModeData(ajaxData);
+				ajaxData = replaceParamAsValue(ajaxData, true);
+				source = replaceParamAsValue(source, true);
 				String result = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData, cookies);
 				addModeData(block, result);
 				//renderDom(block);
@@ -215,6 +221,7 @@ public class AnalyzeHtml {
 			addModeData(block, "{}");
 		}
 		if(src!=null&&src!=""){
+			src = replaceParamAsValue(src, true);
 			String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null, cookies);
 			block.setHtml(result);
 			renderDom(block);
@@ -231,7 +238,8 @@ public class AnalyzeHtml {
 		if(html==null||data==null)return;
 		//System.out.println(data);
 		//System.out.println(dataMap.toString());
-		String out = LazyScriptEngine.run(html, dataMap.toString(), data);
+		html = replaceParamAsValue(html, false);
+		String out = LazyScriptEngine.run(html, data, null);
 		//System.out.println("---"+block.getAttrHtml()+"------"+out);
 		block.setOutHtml(out);
 		//block=null;

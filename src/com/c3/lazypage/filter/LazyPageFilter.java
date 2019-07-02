@@ -31,20 +31,14 @@ public class LazyPageFilter implements Filter {
 	public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
 			throws IOException, ServletException {
 		HttpServletRequest request = (HttpServletRequest) req;
-		String serverPath = request.getServletPath();
-		
-		if(serverPath.indexOf(".")>0){
-			String serverPathLower = serverPath.toLowerCase();
-			if(!serverPathLower.endsWith(".html")){
-				/*if(serverPathLower.endsWith(".json")){
-					System.out.println(serverPath);
-					Cookie[] cookies2 = request.getCookies();
-					if(cookies2!=null){
-				    	for (Cookie cookie : cookies2) {
-				    		System.out.println(cookie.getName()+"="+cookie.getValue());
-				    	}
-			    	}
-				}*/
+		String serverPath = request.getServletPath().toLowerCase();
+		String fileName = serverPath.substring(serverPath.lastIndexOf("/")+1);
+		//request.getHeader(arg0);
+		if(fileName.indexOf(".")>0){
+			if(!fileName.endsWith(".html")){
+				chain.doFilter(req, resp);
+				return;
+			}else if(fileName.startsWith("_")){
 				chain.doFilter(req, resp);
 				return;
 			}
@@ -68,6 +62,7 @@ public class LazyPageFilter implements Filter {
 					}
 					if(group != null){
 						request.setAttribute("lazypage_group", group);
+						request.setAttribute("lazypage_route", route);
 					}
 					String realPath = LazyPage.map.get(route).replaceAll("\\+", "%2B");
 					String query = request.getQueryString();
@@ -102,14 +97,16 @@ public class LazyPageFilter implements Filter {
 			String[] pathParams = null;
 			if(lazypageGroup!=null){
 				pathParams = (String[])lazypageGroup;
+				//String lazypageRoute = (String)request.getAttribute("lazypage_route");
 				if(pathParams!=null){
 					String pathStr = "[\""+String.join("\",\"", pathParams)+"\"]";
 					int bodyEnd = outString.lastIndexOf("</body>");
 					if(bodyEnd>0){
-						outString = outString.substring(0, bodyEnd)+"<script>LazyPage.pathParams="+pathStr+"</script>\n"+outString.substring(bodyEnd);
+						outString = outString.substring(0, bodyEnd)+"<script>LazyPage.pathParams="+pathStr+";</script>\n"+outString.substring(bodyEnd);
 					}else{
 						outString += "\n<script>LazyPage.pathParams="+pathStr+"</script>";
 					}
+					//LazyPage.pathReg='"+lazypageRoute+"';
 				}
 			}
 			

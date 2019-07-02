@@ -35,7 +35,7 @@ public class JsonHashMap<K,V> extends HashMap<K, V> {
             if(isString)sb.append("\"");
             if (! i.hasNext())
                 return sb.append("}").toString();
-            sb.append(";").append(" ");
+            sb.append(",").append(" ");
         }
 	}
 	public String toString(String exportKey){

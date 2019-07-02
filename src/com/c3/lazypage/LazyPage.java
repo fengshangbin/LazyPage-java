@@ -1,8 +1,10 @@
 package com.c3.lazypage;
 import java.io.File;
+import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,7 +17,15 @@ import com.c3.lazypage.filter.LazyPageFilter;
 public class LazyPage {
 	public static String encoding = "UTF-8";
 	public static HashSet<String> jsPaths = new HashSet<String>();
-	public static HashMap<String, String> map = new HashMap<String, String>();
+	//public static Map<String, String> map = new HashMap<String, String>();
+	public static TreeMap<String, String> map = new TreeMap<String, String>(new Comparator<String>() {
+        @Override
+        public int compare(String o1, String o2) {
+        	if(o1.length()>o2.length())return 1;
+        	else if(o1.length()<o2.length())return -1;
+        	else return o1.compareTo(o2);
+        }
+    });
 	public static HashSet<String> htmlPaths = new HashSet<String>();
 	
 	public static void main(String[] args) {
@@ -80,13 +90,13 @@ public class LazyPage {
 					|| (file.getName().endsWith(".html") && !file.getName().startsWith("_")));
 			for(int i=0; i<files.length; i++){
 				if(files[i].isFile()){
-					String realPath = "/"+files[i].getAbsolutePath().replace(rootPath, "").replaceAll("\\\\", "/");
+					String realPath = "/"+files[i].getAbsolutePath().replace(rootPath, "").replaceAll("\\\\", "/").toLowerCase();
 					String routePath = realPath.replace("-.html", "");
 					routePath = routePath.replaceAll("\\+", "/");
 					routePath = routePath.replaceAll("\\$", "([^/]*?)");
 					htmlPaths.add(realPath);
 					if(! routePath.equals(realPath)){
-						map.put(routePath, realPath);
+						map.put("^"+routePath+"$", realPath);
 					}
                 }else{
                 	filterHtmlByDirectory(rootPath, files[i], scanChildrenDirectory);

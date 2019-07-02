@@ -42,7 +42,7 @@ public class Document {
 		return blocks;
 	}
 	private void tagBlocks(){
-		Iterator<Block> it=blocks.iterator();  
+		Iterator<Block> it=blocks.iterator();
 		while(it.hasNext()){
 			it.next().tagBlock();
 		}

@@ -44,11 +44,11 @@ public class LazyScriptEngine {
 			e.printStackTrace();
 		}
 	}
-	public static String run(String str, String data, String modeData){
+	public static String run(String str, String data, String mode){
 		Bindings bindings = new SimpleBindings();
 		bindings.put("str", str);
 		bindings.put("data", data);
-		bindings.put("modeData", modeData);
+		bindings.put("mode", mode);
         String result = "";
         try {
         	result = (String)compiled.eval(bindings);
