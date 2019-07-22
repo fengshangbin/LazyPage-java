@@ -3,7 +3,6 @@ import java.io.File;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,19 +14,22 @@ import javax.servlet.ServletContext;
 import com.c3.lazypage.filter.LazyPageFilter;
 
 public class LazyPage {
+	//protected static final Logger LOG = Logger.getLogger(LazyPage.class);
+	
 	public static String encoding = "UTF-8";
+	public static String host = null;
 	public static HashSet<String> jsPaths = new HashSet<String>();
 	//public static Map<String, String> map = new HashMap<String, String>();
 	public static TreeMap<String, String> map = new TreeMap<String, String>(new Comparator<String>() {
-        @Override
-        public int compare(String o1, String o2) {
-        	if(o1.length()>o2.length())return 1;
-        	else if(o1.length()<o2.length())return -1;
-        	else return o1.compareTo(o2);
-        }
-    });
+		@Override
+		public int compare(String o1, String o2) {
+			if(o1.length()>o2.length())return 1;
+			else if(o1.length()<o2.length())return -1;
+			else return o1.compareTo(o2);
+		}
+	});
 	public static HashSet<String> htmlPaths = new HashSet<String>();
-	
+
 	public static void main(String[] args) {
 		String url = "index-haha-nihao-1";
 		String regex = "index-([^/]*?)-nihao-([^/]*?)";
@@ -44,52 +46,69 @@ public class LazyPage {
 		}
 	}
 	
+	public static void host(String host){
+		LazyPage.host = host;
+	}
+
 	public static void init(ServletContext context){
 		init(context, "");
 	}
+	public static void init(String htmlPath){
+		init(null, htmlPath, true);
+	}
 	public static void init(ServletContext context, String htmlPath){
-		init(context, htmlPath, false);
+		init(context, htmlPath, true);
 	}
 	public static void init(ServletContext context, boolean scanChildrenDirectory){
 		init(context, "", scanChildrenDirectory);
 	}
-	
+
 	/**
-	 * LazyPage³õÊ¼»¯·½·¨£¬ÇëÔÚweb³õÊ¼»¯Ê±µ÷ÓÃÈçServletContextListenerÊµÀýµÄcontextInitializedÖÐ
-	 * @param  context  ServletÉÏÏÂÎÄContext
-	 * @param  htmlPath  htmlÎÄ¼þËùÔÚÄ¿Â¼£¬Ä¬ÈÏÎªweb¸úÄ¿Â¼
-	 * @param  scanChildrenDirectory  ÊÇ·ñÉ¨Ãè×ÓÄ¿Â¼ÖÐµÄhtmlÎÄ¼þ£¬Ä¬ÈÏÎªfalse
+	 * LazyPageåˆå§‹åŒ–æ–¹æ³•ï¼Œè¯·åœ¨webåˆå§‹åŒ–æ—¶è°ƒç”¨å¦‚ServletContextListenerå®žä¾‹çš„contextInitializedä¸­
+	 * @param  context  Servletä¸Šä¸‹æ–‡Context ä¸ºnullæ—¶htmlPathéœ€è¦ç»å¯¹è·¯å¾„å¹¶ä¸”éœ€è¦æ‰‹åŠ¨æ·»åŠ è¿‡æ»¤å™¨LazyPageFilter
+	 * @param  htmlPath  htmlæ–‡ä»¶æ‰€åœ¨ç›®å½•ï¼Œé»˜è®¤ä¸ºwebè·Ÿç›®å½•
+	 * @param  scanChildrenDirectory  æ˜¯å¦æ‰«æå­ç›®å½•ä¸­çš„htmlæ–‡ä»¶ï¼Œé»˜è®¤ä¸ºfalse
 	 */
 	public static void init(ServletContext context, String htmlPath, boolean scanChildrenDirectory){
-		
-		File file = new File(context.getRealPath(htmlPath));
-		String rootPath = context.getRealPath("");
+		File file = new File(context==null ? htmlPath : context.getRealPath(htmlPath));
+		String rootPath = context==null ? htmlPath : context.getRealPath("");
+		/*rootPath = rootPath.replaceFirst("^/([a-zA-Z]){1}:", "$1:")
+				.replaceAll("%20"," ")
+				.replaceAll("/", "\\\\");*/
+		//System.out.println(rootPath);
+		//LOG.info("rootPath:"+rootPath);
 		filterHtmlByDirectory(rootPath, file, scanChildrenDirectory);
 		/*map.forEach((key, value) -> {
-			System.out.println(key+" - "+value);
+			//System.out.println(key+" - "+value);
+			LOG.info(key+" - "+value);
+		});
+		htmlPaths.forEach(key -> {
+			LOG.info(key);
 		});*/
-		
-		FilterRegistration.Dynamic dynamicFilter = context.addFilter("lazyPageFilter", LazyPageFilter.class);
-		EnumSet<DispatcherType> dispatcherTypes = EnumSet.allOf(DispatcherType.class); 
-		dispatcherTypes.add(DispatcherType.REQUEST);
-		dispatcherTypes.add(DispatcherType.FORWARD);
-		dynamicFilter.addMappingForUrlPatterns(dispatcherTypes, false, "/*"); //isMatchAfter
+		if(context!=null){
+			FilterRegistration.Dynamic dynamicFilter = context.addFilter("lazyPageFilter", LazyPageFilter.class);
+			EnumSet<DispatcherType> dispatcherTypes = EnumSet.allOf(DispatcherType.class);
+			dispatcherTypes.add(DispatcherType.REQUEST);
+			dispatcherTypes.add(DispatcherType.FORWARD);
+			dynamicFilter.addMappingForUrlPatterns(dispatcherTypes, false, "/*"); //isMatchAfter
+		}
 	}
-	
+
 	/**
-	 * ×¢²áÈ«¾Ö½Å±¾ÎÄ¼þ£¬ÇëÔÚweb³õÊ¼»¯Ê±µ÷ÓÃ
-	 * @param  jsPath  ½Å±¾ÎÄ¼þÂ·¾¶
+	 * æ³¨å†Œå…¨å±€è„šæœ¬æ–‡ä»¶ï¼Œè¯·åœ¨webåˆå§‹åŒ–æ—¶è°ƒç”¨
+	 * @param  jsPath  è„šæœ¬æ–‡ä»¶è·¯å¾„
 	 */
 	public static void addJsFile(String jsPath){
 		jsPaths.add(jsPath);
 	}
-	
+
 	private static void filterHtmlByDirectory(String rootPath, File directory, boolean scanChildrenDirectory){
 		if(directory.exists() && directory.isDirectory()){
 			File[] files = directory.listFiles(file -> (scanChildrenDirectory && file.isDirectory())
 					|| (file.getName().endsWith(".html") && !file.getName().startsWith("_")));
 			for(int i=0; i<files.length; i++){
 				if(files[i].isFile()){
+					//System.out.println(files[i].getAbsolutePath());
 					String realPath = "/"+files[i].getAbsolutePath().replace(rootPath, "").replaceAll("\\\\", "/").toLowerCase();
 					String routePath = realPath.replace("-.html", "");
 					routePath = routePath.replaceAll("\\+", "/");
@@ -98,9 +117,9 @@ public class LazyPage {
 					if(! routePath.equals(realPath)){
 						map.put("^"+routePath+"$", realPath);
 					}
-                }else{
-                	filterHtmlByDirectory(rootPath, files[i], scanChildrenDirectory);
-                }
+				}else{
+					filterHtmlByDirectory(rootPath, files[i], scanChildrenDirectory);
+				}
 			}
 		}
 	}

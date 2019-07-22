@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import javax.servlet.http.Cookie;
 
+import com.c3.lazypage.LazyPage;
 import com.c3.lazypage.entity.Block;
 import com.c3.lazypage.entity.Document;
 import com.c3.lazypage.servlet.LazyPageServlet;
@@ -43,6 +44,7 @@ public class AnalyzeHtml {
 		doc = new Document(html);
 		this.rootPath = getRootPath(path);
 		path = path.replaceAll("("+rootPath+"/?)", "");
+		if(LazyPage.host!=null)this.rootPath=LazyPage.host;
 		if(path.endsWith("/"))path+="end";
 		this.paths = path.split("/");
 		//this.paths = path.replaceAll("("+rootPath+"/?)", "");
@@ -159,8 +161,8 @@ public class AnalyzeHtml {
 		Matcher m = pattern.matcher(str);
 		StringBuffer sb = new StringBuffer();
 		while (m.find()) {
-			System.out.println(m.group(1));
-			System.out.println(dataMap.toString());
+			//System.out.println(m.group(1));
+			//System.out.println(dataMap.toString());
 			String value = LazyScriptEngine.run(m.group(1), dataMap.toString(), "\""+isString+"\"");
 			m.appendReplacement(sb, value);
 		}

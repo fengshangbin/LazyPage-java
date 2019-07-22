@@ -1,7 +1,6 @@
 package com.c3.lazypage.filter;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -22,6 +21,8 @@ import com.c3.lazypage.LazyPage;
 import com.c3.lazypage.analyze.AnalyzeHtml;
 
 public class LazyPageFilter implements Filter {
+	//protected static final Logger LOG = Logger.getLogger(LazyPageFilter.class);
+	
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
 
@@ -43,7 +44,16 @@ public class LazyPageFilter implements Filter {
 				return;
 			}
 		}
-		//System.out.println(serverPath);
+		//System.out.println("serverPath:"+serverPath);
+		//LOG.info("serverPath:"+serverPath);
+		if(serverPath.endsWith("/") && LazyPage.htmlPaths.contains(serverPath+"index.html")){
+			String query = request.getQueryString();
+	    	String url = request.getRequestURL().toString();
+			request.setAttribute("lazypage_url", url);
+			request.setAttribute("lazypage_query", query);
+			request.getRequestDispatcher(serverPath+"index.html").forward(req, resp);
+			return;
+		}
 		if(! LazyPage.htmlPaths.contains(serverPath)){
 			Set<String> keys = LazyPage.map.keySet();
 			Iterator<String> it = keys.iterator();  
