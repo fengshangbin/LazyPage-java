@@ -46,8 +46,8 @@ public class LazyPage {
 		}
 	}
 	
-	public static void host(String host){
-		LazyPage.host = host;
+	public static void host(String realHost){
+		LazyPage.host = realHost;
 	}
 
 	public static void init(ServletContext context){
