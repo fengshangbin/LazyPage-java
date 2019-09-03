@@ -144,7 +144,7 @@ public class LazyPageFilter implements Filter {
 	        	    dataMap.put("title", QueryHelp.querySelector(outString, "title"));
 	            }
 	          outString = dataMap.toString();
-	          System.out.print(outString);
+	          //System.out.print(outString);
 			}
 			
 			byte[] outByte = outString.getBytes("UTF-8");
