@@ -1,9 +1,13 @@
 package com.c3.lazypage.analyze;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 
 import javax.script.Bindings;
 import javax.script.Compilable;
@@ -13,7 +17,6 @@ import javax.script.ScriptEngineManager;
 import javax.script.SimpleBindings;
 
 import com.c3.lazypage.LazyPage;
-import com.c3.lazypage.servlet.LazyPageServlet;
 
 public class LazyScriptEngine {
 	private static CompiledScript compiled;
@@ -22,7 +25,7 @@ public class LazyScriptEngine {
 		ScriptEngine engine = manager.getEngineByName("nashorn");
 		StringBuffer jsStringBuffer = new StringBuffer();
 		LazyPage.jsPaths.forEach(jsPath -> {
-			jsStringBuffer.append(LazyPageServlet.readToString(jsPath));
+			jsStringBuffer.append(readToString(jsPath));
 		});
 		InputStream is=LazyScriptEngine.class.getResourceAsStream("/baiduTemplate.js");
         BufferedReader br=new BufferedReader(new InputStreamReader(is));
@@ -58,4 +61,27 @@ public class LazyScriptEngine {
 		}
         return result;
 	}
+	
+	public static String readToString(String fileName) {
+        File file = new File(fileName);  
+        Long filelength = file.length();  
+        byte[] filecontent = new byte[filelength.intValue()];  
+        try {  
+            FileInputStream in = new FileInputStream(file);  
+            in.read(filecontent);  
+            in.close();  
+        } catch (FileNotFoundException e) {  
+            e.printStackTrace();  
+        } catch (IOException e) {  
+            e.printStackTrace();  
+        }  
+        try {  
+            return new String(filecontent, LazyPage.encoding);  
+        } catch (UnsupportedEncodingException e) {
+        	String errorMessage = "The OS does not support " + LazyPage.encoding;
+            System.err.println(errorMessage);
+            e.printStackTrace();  
+            return errorMessage;  
+        }  
+    }
 }

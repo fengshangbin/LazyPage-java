@@ -5,8 +5,6 @@ import java.util.Vector;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.c3.lazypage.servlet.LazyPageServlet;
-
 public class Document {
 	private String html;
 	private Vector<Block> blocks=new Vector<Block>();
@@ -20,10 +18,10 @@ public class Document {
 		this.html = html;
 	}
 	public static void main(String[] args) {
-		String html = LazyPageServlet.readToString("D:\\js project tools\\lazypage\\examples\\index.html");
+		//String html = LazyPageServlet.readToString("D:\\js project tools\\lazypage\\examples\\index.html");
 		//System.out.println(html);
-		Document doc = new Document(html);
-		doc.queryBlocks();
+		/*Document doc = new Document(html);
+		doc.queryBlocks();*/
 		//System.out.println(doc.getHtml());
 	}
 	public Vector<Block> queryBlocks(){

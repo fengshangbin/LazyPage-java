@@ -30,9 +30,13 @@ public class JsonHashMap<K,V> extends HashMap<K, V> {
             sb.append(key);
             sb.append("\"");
             sb.append(":");
-            if(isString)sb.append("\"");
-            sb.append(value);
-            if(isString)sb.append("\"");
+            if(isString){
+            	sb.append("\"");
+            	sb.append(((String)value).replaceAll("\"", "\\\\\""));
+            	sb.append("\"");
+            }else{
+            	sb.append(value);
+            }
             if (! i.hasNext())
                 return sb.append("}").toString();
             sb.append(",").append(" ");

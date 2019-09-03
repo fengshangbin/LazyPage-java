@@ -13,7 +13,6 @@ import javax.servlet.http.Cookie;
 import com.c3.lazypage.LazyPage;
 import com.c3.lazypage.entity.Block;
 import com.c3.lazypage.entity.Document;
-import com.c3.lazypage.servlet.LazyPageServlet;
 
 public class AnalyzeHtml {
 	private JsonHashMap<String, String> dataMap = new JsonHashMap<String, String>();
@@ -56,14 +55,14 @@ public class AnalyzeHtml {
 		this.cookies = cookies;
 		checkBlocks(doc);
 		String result = doc.getHtml().replaceAll("x-tmpl-lazypage-tag", "x-tmpl-lazypage");
-		if(!dataMap.isEmpty()){
+		/*if(!dataMap.isEmpty()){
 			int bodyEnd = result.lastIndexOf("</body>");
 			if(bodyEnd>0){
 				result = result.substring(0, bodyEnd)+"<script>"+dataMap.toString("LazyPage.data")+"</script>\n"+result.substring(bodyEnd);
 			}else{
 				result += "\n<script>"+dataMap.toString("LazyPage.data")+"</script>";
 			}
-		}
+		}*/
 		return result;
 	}
 	private static String getRootPath(String path){
@@ -130,6 +129,9 @@ public class AnalyzeHtml {
 		}
 	}
 	private String getQueryString(String name){
+		return getQueryString(query,name);
+	}
+	public static String getQueryString(String query, String name){
 		if(query==null)return "";
 		String reg = "(^|&)"+ name +"=([^&]*)(&|$)";
 		Pattern pattern = Pattern.compile(reg, Pattern.CASE_INSENSITIVE);

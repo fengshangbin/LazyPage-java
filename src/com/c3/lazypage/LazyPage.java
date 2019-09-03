@@ -1,15 +1,22 @@
 package com.c3.lazypage;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.TreeMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletContext;
+
+//import org.apache.log4j.Logger;
 
 import com.c3.lazypage.filter.LazyPageFilter;
 
@@ -20,14 +27,17 @@ public class LazyPage {
 	public static String host = null;
 	public static HashSet<String> jsPaths = new HashSet<String>();
 	//public static Map<String, String> map = new HashMap<String, String>();
-	public static TreeMap<String, String> map = new TreeMap<String, String>(new Comparator<String>() {
+	/*public static TreeMap<String, String> map = new TreeMap<String, String>(new Comparator<String>() {
 		@Override
 		public int compare(String o1, String o2) {
 			if(o1.length()>o2.length())return 1;
 			else if(o1.length()<o2.length())return -1;
 			else return o1.compareTo(o2);
 		}
-	});
+	});*/
+	private static Map<String,String> list = new HashMap<String,String>();
+	public static List<Map.Entry<String, String>> map = new ArrayList<Map.Entry<String, String>>();
+	
 	public static HashSet<String> htmlPaths = new HashSet<String>();
 
 	public static void main(String[] args) {
@@ -78,10 +88,38 @@ public class LazyPage {
 		//System.out.println(rootPath);
 		//LOG.info("rootPath:"+rootPath);
 		filterHtmlByDirectory(rootPath, file, scanChildrenDirectory);
+		
+		map = new ArrayList<Entry<String, String>>(list.entrySet());
+		Collections.sort(map,new Comparator<Map.Entry<String,String>>() {
+            public int compare(Entry<String, String> o1, Entry<String, String> o2) {
+            	int o1Sort = getSort(o1.getValue());
+            	int o2Sort = getSort(o2.getValue());
+                if(o1Sort < o2Sort){
+                	return 1;
+                }else if(o1Sort > o2Sort){
+                	return -1;
+                }else{
+                	return 0;
+                }
+            }
+            public int getSort(String realPath){
+            	int sort = 0;
+            	int len=realPath.length();
+                for (int i = 0; i < len; i++) {
+                  char str = realPath.charAt(i);
+                  sort += (str == '$' ? 1 : 2) * 10 * (len - i);
+                }
+                return sort;
+            }
+        });
+		
 		/*map.forEach((key, value) -> {
 			//System.out.println(key+" - "+value);
 			LOG.info(key+" - "+value);
-		});
+		});*/
+		/*for (Map.Entry<String, String> mapping : map) {
+			LOG.info(mapping.getKey() + ":" + mapping.getValue());
+        }
 		htmlPaths.forEach(key -> {
 			LOG.info(key);
 		});*/
@@ -115,7 +153,7 @@ public class LazyPage {
 					routePath = routePath.replaceAll("\\$", "([^/]*?)");
 					htmlPaths.add(realPath);
 					if(! routePath.equals(realPath)){
-						map.put("^"+routePath+"$", realPath);
+						list.put("^"+routePath+"$", realPath);
 					}
 				}else{
 					filterHtmlByDirectory(rootPath, files[i], scanChildrenDirectory);

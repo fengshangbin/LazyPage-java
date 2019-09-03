@@ -1,8 +1,8 @@
 package com.c3.lazypage.filter;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Set;
+import java.net.URLDecoder;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +19,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.c3.lazypage.LazyPage;
 import com.c3.lazypage.analyze.AnalyzeHtml;
+import com.c3.lazypage.analyze.JsonHashMap;
+import com.c3.lazypage.query.QueryHelp;
+import com.c3.lazypage.query.QueryLazyPage;
 
 public class LazyPageFilter implements Filter {
 	//protected static final Logger LOG = Logger.getLogger(LazyPageFilter.class);
@@ -55,11 +58,10 @@ public class LazyPageFilter implements Filter {
 			return;
 		}
 		if(! LazyPage.htmlPaths.contains(serverPath)){
-			Set<String> keys = LazyPage.map.keySet();
-			Iterator<String> it = keys.iterator();  
-			while(it.hasNext()) {  
-			  String route = it.next();  
-			  Pattern pattern = Pattern.compile(route, Pattern.CASE_INSENSITIVE);
+			for (Entry<String, String> e: LazyPage.map) {
+				//System.out.println(e.getKey()+":"+e.getValue());
+				String route = e.getKey();
+				Pattern pattern = Pattern.compile(route, Pattern.CASE_INSENSITIVE);
 				Matcher isUrl = pattern.matcher(serverPath);
 				if(isUrl.matches()){
 					int count = isUrl.groupCount();
@@ -72,9 +74,10 @@ public class LazyPageFilter implements Filter {
 					}
 					if(group != null){
 						request.setAttribute("lazypage_group", group);
-						request.setAttribute("lazypage_route", route);
+						//request.setAttribute("lazypage_route", route);
 					}
-					String realPath = LazyPage.map.get(route).replaceAll("\\+", "%2B");
+					String realPath = e.getValue().replaceAll("\\+", "%2B");
+					//String realPath = URLDecoder.decode(e.getValue(), "utf-8");
 					String query = request.getQueryString();
 			    	String url = request.getRequestURL().toString();
 					request.setAttribute("lazypage_url", url);
@@ -92,23 +95,23 @@ public class LazyPageFilter implements Filter {
 		byte[] content = respWrapper.getContent();
 		if (content.length > 0) {
 			String outString = new String(content, "UTF-8");
-			boolean lazyPageSpider = false;
+			//boolean lazyPageSpider = false;
 			Cookie[] cookies = request.getCookies();
-			if(cookies!=null){
+			/*if(cookies!=null){
 		    	for (Cookie cookie : cookies) {
 		    		if(cookie.getName().equals("LazyPageSpider")){
 		    			lazyPageSpider = true;
 			 			break;
 		    		}
 		    	}
-	    	}
+	    	}*/
 
 			Object lazypageGroup = request.getAttribute("lazypage_group");
 			String[] pathParams = null;
 			if(lazypageGroup!=null){
 				pathParams = (String[])lazypageGroup;
 				//String lazypageRoute = (String)request.getAttribute("lazypage_route");
-				if(pathParams!=null){
+				/*if(pathParams!=null){
 					String pathStr = "[\""+String.join("\",\"", pathParams)+"\"]";
 					int bodyEnd = outString.lastIndexOf("</body>");
 					if(bodyEnd>0){
@@ -117,15 +120,31 @@ public class LazyPageFilter implements Filter {
 						outString += "\n<script>LazyPage.pathParams="+pathStr+"</script>";
 					}
 					//LazyPage.pathReg='"+lazypageRoute+"';
-				}
+				}*/
 			}
 			
-			if(lazyPageSpider == false){
-				Object lazypageQuery = request.getAttribute("lazypage_query");
-				String query = lazypageQuery!=null?lazypageQuery.toString():request.getQueryString();
-				Object lazypageUrl = request.getAttribute("lazypage_url");
-		    	String url = lazypageUrl!=null?lazypageUrl.toString():request.getRequestURL().toString();
-				outString = new AnalyzeHtml().parse(url, query, outString, pathParams, cookies);
+			//if(lazyPageSpider == false){
+			Object lazypageQuery = request.getAttribute("lazypage_query");
+			String query = lazypageQuery!=null?lazypageQuery.toString():request.getQueryString();
+			if(query!=null)query=URLDecoder.decode(query, "utf-8");
+			//System.out.println("query:"+query);
+			Object lazypageUrl = request.getAttribute("lazypage_url");
+	    	String url = lazypageUrl!=null?lazypageUrl.toString():request.getRequestURL().toString();
+			outString = new AnalyzeHtml().parse(url, query, outString, pathParams, cookies);
+			//}
+			
+			String lazypageTargetSelector = AnalyzeHtml.getQueryString(query, "lazypageTargetSelector");
+			if(lazypageTargetSelector.length()>0){
+				String block = QueryLazyPage.queryLazyPageSelector(outString, lazypageTargetSelector);
+				
+				JsonHashMap<String, Object> dataMap = new JsonHashMap<String, Object>();
+				dataMap.put("block", block);
+				dataMap.put("hasTargetLazyPage", block != null);
+	            if (block!=null) {
+	        	    dataMap.put("title", QueryHelp.querySelector(outString, "title"));
+	            }
+	          outString = dataMap.toString();
+	          System.out.print(outString);
 			}
 			
 			byte[] outByte = outString.getBytes("UTF-8");
