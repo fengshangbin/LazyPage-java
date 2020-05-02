@@ -1,5 +1,9 @@
 package com.c3.lazypage;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -12,9 +16,15 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletContext;
+
+import com.c3.lazypage.analyze.LazyScriptEngine;
 
 //import org.apache.log4j.Logger;
 
@@ -23,18 +33,6 @@ import com.c3.lazypage.filter.LazyPageFilter;
 public class LazyPage {
 	//protected static final Logger LOG = Logger.getLogger(LazyPage.class);
 	
-	public static String encoding = "UTF-8";
-	public static String host = null;
-	public static HashSet<String> jsPaths = new HashSet<String>();
-	//public static Map<String, String> map = new HashMap<String, String>();
-	/*public static TreeMap<String, String> map = new TreeMap<String, String>(new Comparator<String>() {
-		@Override
-		public int compare(String o1, String o2) {
-			if(o1.length()>o2.length())return 1;
-			else if(o1.length()<o2.length())return -1;
-			else return o1.compareTo(o2);
-		}
-	});*/
 	private static Map<String,String> list = new HashMap<String,String>();
 	public static List<Map.Entry<String, String>> map = new ArrayList<Map.Entry<String, String>>();
 	
@@ -54,10 +52,6 @@ public class LazyPage {
 				System.out.println(isUrl.group(i));
 			}
 		}
-	}
-	
-	public static void host(String realHost){
-		LazyPage.host = realHost;
 	}
 
 	public static void init(ServletContext context){
@@ -87,6 +81,9 @@ public class LazyPage {
 				.replaceAll("/", "\\\\");*/
 		//System.out.println(rootPath);
 		//LOG.info("rootPath:"+rootPath);
+		
+		
+		loadconfig(rootPath);
 		filterHtmlByDirectory(rootPath, file, scanChildrenDirectory);
 		
 		map = new ArrayList<Entry<String, String>>(list.entrySet());
@@ -136,9 +133,9 @@ public class LazyPage {
 	 * 注册全局脚本文件，请在web初始化时调用
 	 * @param  jsPath  脚本文件路径
 	 */
-	public static void addJsFile(String jsPath){
+	/*public static void addJsFile(String jsPath){
 		jsPaths.add(jsPath);
-	}
+	}*/
 
 	private static void filterHtmlByDirectory(String rootPath, File directory, boolean scanChildrenDirectory){
 		if(directory.exists() && directory.isDirectory()){
@@ -158,6 +155,91 @@ public class LazyPage {
 				}else{
 					filterHtmlByDirectory(rootPath, files[i], scanChildrenDirectory);
 				}
+			}
+		}
+	}
+	
+	public static HashMap<String, String> mapping = new HashMap<String, String>();
+	private static void loadconfig(String rootPath) {
+		File file = new File(rootPath, "config.json");
+		if(file.exists()){
+			String config = null;
+			Long filelength = file.length();  
+	        byte[] filecontent = new byte[filelength.intValue()];  
+	        try {  
+	            FileInputStream in = new FileInputStream(file);  
+	            in.read(filecontent);  
+	            in.close();  
+	        } catch (FileNotFoundException e) {  
+	            e.printStackTrace();  
+	        } catch (IOException e) {  
+	            e.printStackTrace();  
+	        }  
+	        try {  
+	        	config = new String(filecontent, "UTF-8");  
+	        } catch (UnsupportedEncodingException e) {
+	            e.printStackTrace();  
+	            return;  
+	        }  
+			ScriptEngineManager manager = new ScriptEngineManager();
+			ScriptEngine engine = manager.getEngineByName("nashorn");
+			Invocable invokeEngine = null;
+			StringBuffer sb = new StringBuffer();
+			sb.append("var configJSON = {};");
+			sb.append("function setConfigJSON(configString){ configJSON = JSON.parse(configString); }; ");
+			sb.append("function getConfig(){ return JSON.stringify(configJSON.config); }; ");
+			sb.append("function getImport(){ return configJSON.import ? configJSON.import.join() : [].join(); }; ");
+			sb.append("function getMapping(){ "
+					+ "var mapping = configJSON.mapping, result=[]; "
+					+ "if(!mapping) return result.join(); "
+					+ "for(var i=0; i<mapping.length; i++){ "
+					+ "var map = mapping[i]; "
+					+ "if(map.from && map.to){ "
+					+ "result.push(map.from); result.push(map.to); "
+					+ "} "
+					+ "}; "
+					+ "return result.join();}; ");
+	        try {
+	        	engine.eval(sb.toString());
+				invokeEngine = (Invocable)engine;
+			} catch (ScriptException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+	        try {
+	        	invokeEngine.invokeFunction("setConfigJSON", config);
+	        } catch (Exception e) {
+				e.printStackTrace();
+				return;
+			}
+	        try {
+	        	String result = (String)invokeEngine.invokeFunction("getConfig");
+	        	LazyScriptEngine.loadConfig(result);
+	        } catch (Exception e) {
+				e.printStackTrace();
+			}
+	        try {
+	        	String result = (String)invokeEngine.invokeFunction("getImport");
+	        	if(result.length()>0){
+		        	String[] imports = result.split(",");
+		        	for(int i=0; i<imports.length; i++){
+		        		String fileName = rootPath + "/" + imports[i];
+		        		LazyScriptEngine.loadJSCode(fileName);
+		        	}
+	        	}
+	        } catch (Exception e) {
+				e.printStackTrace();
+			}
+	        try {
+	        	String result = (String)invokeEngine.invokeFunction("getMapping");
+	        	if(result.length()>0){
+		        	String[] maps = result.split(",");
+		        	for(int i=0; i<maps.length; i+=2){
+		        		mapping.put(maps[i], maps[i+1]);
+		        	}
+	        	}
+	        } catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 	}

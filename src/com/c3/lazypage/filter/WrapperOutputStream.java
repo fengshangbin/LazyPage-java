@@ -8,10 +8,10 @@ import javax.servlet.WriteListener;
 
 public class WrapperOutputStream extends ServletOutputStream {
 	private ByteArrayOutputStream bos;
-	 
-    public WrapperOutputStream(ByteArrayOutputStream bos){
-        this.bos = bos;
-    }
+
+	public WrapperOutputStream(ByteArrayOutputStream bos) {
+		this.bos = bos;
+	}
 
 	@Override
 	public boolean isReady() {
@@ -22,12 +22,13 @@ public class WrapperOutputStream extends ServletOutputStream {
 	@Override
 	public void setWriteListener(WriteListener arg0) {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void write(int b) throws IOException {
 		// TODO Auto-generated method stub
+		//System.out.println(b);
 		bos.write(b);
 	}
 

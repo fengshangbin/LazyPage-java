@@ -12,11 +12,11 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 	private ByteArrayOutputStream buffer;
 	private ServletOutputStream out;
 
-	public ResponseWrapper(HttpServletResponse httpServletResponse){
-        super(httpServletResponse);
-        buffer = new ByteArrayOutputStream();
-        out = new WrapperOutputStream(buffer);
-    }
+	public ResponseWrapper(HttpServletResponse httpServletResponse) {
+		super(httpServletResponse);
+		buffer = new ByteArrayOutputStream();
+		out = new WrapperOutputStream(buffer);
+	}
 
 	@Override
 	public ServletOutputStream getOutputStream() throws IOException {
@@ -26,6 +26,8 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 	@Override
 	public void flushBuffer() throws IOException {
 		if (out != null) {
+			System.out.println(out.isReady()+"-"+buffer.size());
+			buffer.flush();
 			out.flush();
 		}
 	}

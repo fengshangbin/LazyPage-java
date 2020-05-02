@@ -4,84 +4,141 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 
-import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
+import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import javax.script.SimpleBindings;
-
-import com.c3.lazypage.LazyPage;
+import javax.script.ScriptException;
 
 public class LazyScriptEngine {
-	private static CompiledScript compiled;
+	//private static Invocable invocable = null;
+	private static StringBuffer sb = new StringBuffer();
+
+	//private static Bindings bindings = new SimpleBindings();
 	static{
-		ScriptEngineManager manager = new ScriptEngineManager();
-		ScriptEngine engine = manager.getEngineByName("nashorn");
-		StringBuffer jsStringBuffer = new StringBuffer();
-		LazyPage.jsPaths.forEach(jsPath -> {
-			jsStringBuffer.append(readToString(jsPath));
-		});
-		InputStream is=LazyScriptEngine.class.getResourceAsStream("/baiduTemplate.js");
-        BufferedReader br=new BufferedReader(new InputStreamReader(is));
-		//String jsFileName = "D:\\myEclipseWorkSpace\\J2EEWebTest\\src\\baiduTemplate.js";
-		try {
-			//FileReader reader = new FileReader(jsFileName);
-			
-			String line = br.readLine();
-			while (line != null) {
-				jsStringBuffer.append(line).append("\r\n");
-				line = br.readLine();
-			}
-			br.close();
-			
-			compiled = ((Compilable)engine).compile(jsStringBuffer.toString());
-			//reader.close();
-			br.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		InputStream is=LazyScriptEngine.class.getResourceAsStream("/template-web.js");
+		sb.append("var process = {'env': {'NODE_ENV': 'production'}};");
+		loadJSCode(is);
+		sb.append("template.defaults.imports.Date = Date;");
+		sb.append("template.defaults.imports.Math = Math;");
+		sb.append("template.defaults.imports.JSON = JSON;");
+		sb.append("template.defaults.imports.decodeURI = decodeURI;");
+		sb.append("template.defaults.imports.decodeURIComponent = decodeURIComponent;");
+		sb.append("template.defaults.imports.encodeURI = encodeURI;");
+		sb.append("template.defaults.imports.encodeURIComponent = encodeURIComponent;");
+		sb.append("template.defaults.imports.escape = escape;");
+		sb.append("template.defaults.imports.eval = eval;");
+		sb.append("template.defaults.imports.isNaN = isNaN;");
+		sb.append("template.defaults.imports.Number = Number;");
+		sb.append("template.defaults.imports.parseFloat = parseFloat;");
+		sb.append("template.defaults.imports.parseInt = parseInt;");
+		sb.append("template.defaults.imports.String = String;");
+		sb.append("template.defaults.imports.unescape = unescape;");
+		
+		sb.append("template.defaults.imports.$import = {};");
+		sb.append("var lazyPagePathNames, lazyPageQuery;");
+		sb.append("template.defaults.imports.$path = function(index) {return index < lazyPagePathNames.length ? lazyPagePathNames[index] : null;};");
+		sb.append("template.defaults.imports.$query = function(key) {"
+				+ "if (lazyPageQuery == null) return null;"
+				+ "var regStr = '(^|&)' + key + '=([^&]*)(&|$)';"
+				+ "var reg = new RegExp(regStr, 'i');"
+				+ "var r = lazyPageQuery.match(reg);"
+				+ "if (r != null) return r[2];"
+				+ "return null;};");
+		sb.append("function run(html, source, path, query, blocks) {"
+				+ "if(typeof source == 'string') source = JSON.parse(source);"
+				+ "if(typeof blocks == 'string') blocks = JSON.parse(blocks);"
+				+ "lazyPagePathNames=path; lazyPageQuery=query;"
+				+ "template.defaults.imports.$block = blocks;"
+				+ "return template.render(html, source);};");
 	}
-	public static String run(String str, String data, String mode){
-		Bindings bindings = new SimpleBindings();
-		bindings.put("str", str);
-		bindings.put("data", data);
-		bindings.put("mode", mode);
-        String result = "";
+	
+	/*public static void compile(){
+		try {
+			ScriptEngineManager manager = new ScriptEngineManager();
+			ScriptEngine engine = manager.getEngineByName("nashorn");
+			CompiledScript compiled = ((Compilable)engine).compile(sb.toString());
+			compiled.eval();
+			invocable = (Invocable) compiled.getEngine();
+		} catch (ScriptException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+	}*/
+	
+	private static ThreadLocal<Invocable> invocableHolder = new ThreadLocal<Invocable>(); //多线程隔离运行js
+	
+	private static Invocable getInvocable(){
+		if (invocableHolder.get() == null) {
+			ScriptEngineManager manager = new ScriptEngineManager();
+			ScriptEngine engine = manager.getEngineByName("nashorn");
+			Invocable invocable = null;
+			try {
+				CompiledScript compiled = ((Compilable)engine).compile(sb.toString());
+				compiled.eval();
+				invocable = (Invocable) compiled.getEngine();
+	            invocableHolder.set(invocable);
+			} catch (ScriptException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+            return invocable;
+        }else{
+            return invocableHolder.get();
+        }
+    }
+	
+	public static String run(String html, String source, String[] path, String query, JsonHashMap blocks){
+		String result = null;
         try {
-        	result = (String)compiled.eval(bindings);
+        	result = (String)getInvocable().invokeFunction("run", html, source, path, query, blocks.toString());
         } catch (Exception e) {
-        	//System.out.println(str+"-"+data+"-"+modeData);
 			e.printStackTrace();
 		}
         return result;
 	}
 	
-	public static String readToString(String fileName) {
-        File file = new File(fileName);  
-        Long filelength = file.length();  
-        byte[] filecontent = new byte[filelength.intValue()];  
-        try {  
-            FileInputStream in = new FileInputStream(file);  
-            in.read(filecontent);  
-            in.close();  
-        } catch (FileNotFoundException e) {  
-            e.printStackTrace();  
-        } catch (IOException e) {  
-            e.printStackTrace();  
-        }  
-        try {  
-            return new String(filecontent, LazyPage.encoding);  
-        } catch (UnsupportedEncodingException e) {
-        	String errorMessage = "The OS does not support " + LazyPage.encoding;
-            System.err.println(errorMessage);
-            e.printStackTrace();  
-            return errorMessage;  
-        }  
-    }
+	public static void loadConfig(String config){
+		sb.append("template.defaults.imports.$config = "+config+";");
+	}
+	
+	public static void loadJSCode(String fileName){
+		sb.append("(function(root) {");
+		try {
+			loadJSCode(new FileInputStream(fileName));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		sb.append("})(template.defaults.imports.$import);");
+	}
+	/*private static void loadJSCode(File file){
+		sb.append("(function(root) {");
+		try {
+			loadJSCode(new FileInputStream(file));
+		}catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		sb.append("})(template.defaults.imports.$import);");
+	}*/
+	
+	private static void loadJSCode(InputStream is){
+		try {
+			BufferedReader br=new BufferedReader(new InputStreamReader(is, "UTF-8"));
+			String line = br.readLine();
+			while (line != null) {
+				sb.append(line).append("\r\n");
+				line = br.readLine();
+			}
+			br.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

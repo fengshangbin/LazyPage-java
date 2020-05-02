@@ -124,9 +124,11 @@ public class Element implements QueryInterface {
 		this.setAttribute(key, null);
 	};
 
-	public void changeIndex(int _start, int offlen, int _end, Element source) {
+	public boolean changeIndex(int _start, int offlen, int _end, Element source) {
 		if (start >= _start && end <= _end) {
-			destroy();
+			//destroy();
+			dom = null;
+			return false;
 		} else if (end > _start) {
 			// console.log("before","."+html+".", start, end);
 			boolean hasChangeHTML = start < _end;
@@ -139,6 +141,7 @@ public class Element implements QueryInterface {
 			}
 			// console.log("after","."+html+".", start, end);
 		}
+		return true;
 	};
 
 	public Element querySelector(String regStr) {

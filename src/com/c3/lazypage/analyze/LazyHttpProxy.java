@@ -8,10 +8,14 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.http.Cookie;
+
+import com.c3.lazypage.LazyPage;
 
 public class LazyHttpProxy {
 	public static void main(String[] args) {
@@ -80,6 +84,12 @@ public class LazyHttpProxy {
 		if(method==null)method="GET";
 		method = method.toUpperCase();
 		urlString = getRealUrl(rootPath, paths, urlString);
+		
+		HashMap<String, String> mapping = LazyPage.mapping;
+		for (Entry<String, String> entry : mapping.entrySet()) {
+			urlString = urlString.replace(entry.getKey(), entry.getValue());
+		}
+		
 		//System.out.println(urlString+"-"+parameters);
 		HttpURLConnection urlConnection = null;
 		OutputStream out = null;
@@ -132,6 +142,8 @@ public class LazyHttpProxy {
 				}
 				reader.close();
 				reader = null;
+			}else{
+				throw new Exception("error on ajax "+urlString+": statusCode "+resultCode);
 			}
 		}catch (Exception e) {
 			e.printStackTrace();

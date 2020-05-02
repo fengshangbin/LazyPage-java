@@ -39,13 +39,14 @@ public class FastDom implements QueryInterface {
 		elements.remove(el);
 	};
 
-	public void notifyChangeIndex(int start, int end, String newHTML, Element source) {
+	public synchronized void notifyChangeIndex(int start, int end, String newHTML, Element source) {
 		html = html.substring(0, start) + newHTML + this.html.substring(end);
 		int offlen = newHTML.length() - end + start;
 		Iterator<Element> it = elements.iterator();
 		while (it.hasNext()) {
 			Element el = it.next();
-			el.changeIndex(start, offlen, end, source);
+			boolean result = el.changeIndex(start, offlen, end, source);
+			if(!result) it.remove();
 		}
 	};
 

@@ -1,253 +1,198 @@
 package com.c3.lazypage.analyze;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Vector;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.servlet.http.Cookie;
 
-import com.c3.lazypage.LazyPage;
-import com.c3.lazypage.entity.Block;
-import com.c3.lazypage.entity.Document;
+import com.c3.lazypage.entity.Element;
+import com.c3.lazypage.entity.FastDom;
 
 public class AnalyzeHtml {
 	private JsonHashMap<String, String> dataMap = new JsonHashMap<String, String>();
-	private Document doc;
-	private boolean continueCheck=false;
+	private FastDom doc;
+	private boolean continueCheck = false;
 	private String rootPath;
 	private String[] paths;
 	private String query;
-	private String[] pathParams;
+	private String[] pathnames;
 	private Cookie[] cookies;
-	public AnalyzeHtml(){
-		//doc = new Document(html);
+
+	private int blockMarkIndex = 0;
+
+	public AnalyzeHtml() {
+		// doc = new Document(html);
 	}
+
 	public static void main(String[] args) {
-		/*String html = LazyPageServlet.readToString("D:\\js project tools\\lazypage\\examples\\index-.html");
-		AnalyzeHtml analyzeHtml = new AnalyzeHtml();
-		String outHtml = analyzeHtml.parse("http://localhost:8080/J2EEWebTest/index.html", "id=20", html, null, null);
-		System.out.println(outHtml);*/
-		String name="q";
-		String reg = "(^|&)"+ name +"=([^&]*)(&|$)";
+		/*
+		 * String html = LazyPageServlet.
+		 * readToString("D:\\js project tools\\lazypage\\examples\\index-.html"
+		 * ); AnalyzeHtml analyzeHtml = new AnalyzeHtml(); String outHtml =
+		 * analyzeHtml.parse("http://localhost:8080/J2EEWebTest/index.html",
+		 * "id=20", html, null, null); System.out.println(outHtml);
+		 */
+		String name = "q";
+		String reg = "(^|&)" + name + "=([^&]*)(&|$)";
 		Pattern pattern = Pattern.compile(reg, Pattern.CASE_INSENSITIVE);
 		Matcher m = pattern.matcher("q=city");
-		if(m.find()){
+		if (m.find()) {
 			System.out.println(m.group(2));
 		}
 	}
-	public String parse(String path, String query, String html, String[] pathParams, Cookie[] cookies){
-		doc = new Document(html);
+
+	public FastDom parse(String path, String query, String html, Cookie[] cookies) {
+		doc = new FastDom(html);
 		this.rootPath = getRootPath(path);
-		path = path.replaceAll("("+rootPath+"/?)", "");
-		if(LazyPage.host!=null)this.rootPath=LazyPage.host;
-		if(path.endsWith("/"))path+="end";
+		path = path.replaceAll("(" + rootPath + "/?)", "");
+		this.pathnames = path.split("/");
+		// if(LazyPage.host!=null)this.rootPath=LazyPage.host;
+		if (path.endsWith("/"))
+			path += "end";
 		this.paths = path.split("/");
-		//this.paths = path.replaceAll("("+rootPath+"/?)", "");
-		if(paths.length>0){
-			paths = Arrays.copyOf(paths, paths.length-1);
+		if (paths.length > 0) {
+			paths = Arrays.copyOf(paths, paths.length - 1);
 		}
 		this.query = query;
-		this.pathParams = pathParams;
 		this.cookies = cookies;
-		checkBlocks(doc);
-		String result = doc.getHtml().replaceAll("x-tmpl-lazypage-tag", "x-tmpl-lazypage");
-		/*if(!dataMap.isEmpty()){
-			int bodyEnd = result.lastIndexOf("</body>");
-			if(bodyEnd>0){
-				result = result.substring(0, bodyEnd)+"<script>"+dataMap.toString("LazyPage.data")+"</script>\n"+result.substring(bodyEnd);
-			}else{
-				result += "\n<script>"+dataMap.toString("LazyPage.data")+"</script>";
-			}
-		}*/
-		return result;
+
+		boolean result = parseBlock();
+		// String result = doc.getHTML();
+		if(result)return doc;
+		else return new FastDom("server error");
 	}
-	private static String getRootPath(String path){
+
+	private static String getRootPath(String path) {
 		String regex = "^((https|http|ftp|rtsp|mms)?://[^/]*)";
 		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 		Matcher m = pattern.matcher(path);
-		if(m.find()){
+		if (m.find()) {
 			return m.group(1);
 		}
 		return null;
 	}
-	private void checkBlocks(Document doc){
-		continueCheck=false;
-		Vector<Block> blocks = doc.queryBlocks();
-		//int lazyCount = 0;
-		for(int i=0; i<blocks.size(); i++){
-			Block block = blocks.get(i);
-			if(block.getRunStated() > 0)continue;
-			String lazyStr = block.getAttribute("lazy");
-			if(lazyStr!=null && !lazyStr.equals("false")){
-				//lazyCount++;
-				continue;
+
+	private boolean parseBlock() {
+		Element block = doc.querySelector("block:not([wait])");
+		if (block != null) {
+			String attrHTML = block.getAttrHTML();
+			String regStr = ":([\\w-_]*?) *= *\"(.*?)\"";
+			Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
+			Matcher m = pattern.matcher(attrHTML);
+			StringBuffer sb = new StringBuffer();
+			while (m.find()) {
+				String p1 = m.group(1);
+				String p2 = m.group(2);
+				String result = p1 + "=\"{{" + p2 + "}}\"";
+				m.appendReplacement(sb, Matcher.quoteReplacement(result));
 			}
-			String waitStr = block.getAttribute("wait");
-			//System.out.println("+++--"+block.getAttrHtml()+"+++++"+waitStr+".");
-			if(waitStr!=null && !waitStr.isEmpty()){
-				String[] waits = waitStr.split(" ");
-				boolean removeWait = false;
-				for(int j=0; j<waits.length; j++){
-					String waitID = waits[j];
-					if(dataMap.containsKey(waitID)){
-						waitStr = waitStr.replaceAll(waitID+" ?", "");
-						removeWait = true;
-					}
+			m.appendTail(sb);
+			attrHTML = sb.toString();
+
+			attrHTML = LazyScriptEngine.run(attrHTML, "{}", pathnames, query, dataMap);
+			if (attrHTML == null) return false;
+			block.setAttrHTML(attrHTML);
+
+			String source = block.getAttribute("source");
+			String matchJson = "(^\\{(.*?)\\}$)|(^\\[(.*?)\\]$)";
+			pattern = Pattern.compile(matchJson);
+			if (source != null && !source.equals("")) {
+				m = pattern.matcher(source);
+				if (m.find()) {
+					source = source.replaceAll("\\\\'", "&#39;").replaceAll("'", "\"").replaceAll("&#39;", "'");
+				} else {
+					String ajaxType = block.getAttribute("rquest-type");
+					String ajaxData = block.getAttribute("rquest-param");
+					source = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData, cookies);
+					if (source == null) return false;
 				}
-				if(removeWait == true)
-					block.setAttribute("wait", waitStr);
+			} else {
+				source = "{}";
 			}
-			if(waitStr!=null && !waitStr.isEmpty()){
-				//lazyCount++;
-				continue;
+
+			String src = block.getAttribute("src");
+			if (src != null && !src.equals("")) {
+				String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null, cookies);
+				if (result == null) return false;
+				else block.setInnerHTML(result);
 			}
-			//System.out.println("+++"+block.getAttrHtml());
-			runBlock(block);
+
+			return renderDom(block, source);
+		}else{
+			return true;
 		}
-		//System.out.println("continueCheck: "+continueCheck);
-		if(continueCheck == true)checkBlocks(doc);
-	}
-	private void addModeData(Block block, String data){
-		if(data==null)return;
-		block.setData(data);
-		String id = block.getAttribute("id");
-		if(id!=null){
-			dataMap.put(id, data);
-			List<Block> blocks = doc.getBlocks().stream()
-					.filter(item -> item.hasAttribute("wait"))
-					.collect(Collectors.toList());
-			for(int i=0; i<blocks.size(); i++){
-				Block item = blocks.get(i);
-				String wait = item.getAttribute("wait");
-				wait = wait.replaceAll(id+" ?", "");
-				item.setAttribute("wait", wait);
-			}
-		}
-	}
-	private String getQueryString(String name){
-		return getQueryString(query,name);
-	}
-	public static String getQueryString(String query, String name){
-		if(query==null)return "";
-		String reg = "(^|&)"+ name +"=([^&]*)(&|$)";
-		Pattern pattern = Pattern.compile(reg, Pattern.CASE_INSENSITIVE);
-		Matcher m = pattern.matcher(query);
-		if(m.find()){
-			return m.group(2);
-		}
-		return "";
-	}
-	private String replaceQuery(String str, boolean isString){
-		if(str==null)return null;
-		String regStr = "\\{&(.*?)\\}";
-		Pattern pattern = Pattern.compile(regStr);
-		Matcher m = pattern.matcher(str);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			String key = m.group(1);
-			String value = getQueryString(key);
-			if(!isString)value = '"' + value + '"';
-			m.appendReplacement(sb, value);
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}
-	private String replaceModeData(String str, boolean isString){
-		if(str==null)return null;
-		String regStr = "\\{@(.*?)\\}";
-		Pattern pattern = Pattern.compile(regStr);
-		Matcher m = pattern.matcher(str);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			//System.out.println(m.group(1));
-			//System.out.println(dataMap.toString());
-			String value = LazyScriptEngine.run(m.group(1), dataMap.toString(), "\""+isString+"\"");
-			m.appendReplacement(sb, value);
-		}
-		m.appendTail(sb);
-		return sb.toString();
 	}
 
-	private String getPathString(String index){
-		if(pathParams==null)return "";
-		int i = Integer.parseInt(index);
-		if(i>=0 && i<pathParams.length){
-			return pathParams[i];
+	private boolean renderDom(Element block, String source) {
+		//System.out.println("."+block.getOuterHTML()+"."+block.getInnerHTML()+".");
+		HashMap<String, String> blockChildren = new HashMap<String, String>();
+		Element blockChild = block.querySelector("block:not([mark])");
+		while (blockChild != null) {
+			String innerHTML = blockChild.getInnerHTML();
+			blockMarkIndex++;
+			String key = "<!-- lzb" + blockMarkIndex + " -->";
+			blockChildren.put(key, innerHTML);
+			blockChild.setInnerHTML(key);
+			blockChild.setAttribute("mark", "true");
+			blockChild = block.querySelector("block:not([mark])");
 		}
-		return "";
-	}
-	private String replacePath(String str, boolean isString){
-		if(str==null)return null;
-		String regStr = "\\{\\$(.*?)\\}";
-		Pattern pattern = Pattern.compile(regStr);
-		Matcher m = pattern.matcher(str);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			String key = m.group(1);
-			String value = getPathString(key);
-			if(!isString)value = '"' + value + '"';
-			m.appendReplacement(sb, value);
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}
-	private String replaceParamAsValue(String html, boolean isString) {
-		html=replaceQuery(html, isString);
-		html=replacePath(html, isString);
-		html=replaceModeData(html, isString);
-	    return html;
-	}
-	private void runBlock(Block block){
-		block.setRunStated(1);
-		String src = block.getAttribute("src");
-		String source = block.getAttribute("source");
-		String matchJson = "(^\\{(.*?)\\}$)|(^\\[(.*?)\\]$)";
-		Pattern pattern = Pattern.compile(matchJson);
-		if(source!=null&&source!=""){
-			Matcher m = pattern.matcher(source);
-			if(m.find()){
-				source=source.replaceAll("'","\"");
-				addModeData(block, source);
-			}else{
-				String ajaxType = block.getAttribute("ajax-type");
-				String ajaxData = block.getAttribute("ajax-data");
-				ajaxData = replaceParamAsValue(ajaxData, true);
-				source = replaceParamAsValue(source, true);
-				String result = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData, cookies);
-				addModeData(block, result);
-				//renderDom(block);
+		String html = block.getInnerHTML();
+		//System.out.println(html+"-----1");
+		String regStr1 = "<.*? +:[\\w-_]*? *= *\".*?\" *.*?>";
+		Pattern pattern1 = Pattern.compile(regStr1, Pattern.MULTILINE);
+		Matcher m1 = pattern1.matcher(html);
+		StringBuffer sb1 = new StringBuffer();
+		while (m1.find()) {
+			String attrHTML = m1.group(0);
+			String regStr = ":([\\w-_]*?) *= *\"(.*?)\"";
+			Pattern pattern = Pattern.compile(regStr, Pattern.MULTILINE);
+			Matcher m = pattern.matcher(attrHTML);
+			StringBuffer sb = new StringBuffer();
+			while (m.find()) {
+				String p1 = m.group(1);
+				String p2 = m.group(2);
+				String result = p1 + "=\"{{" + p2 + "}}\"";
+				m.appendReplacement(sb, Matcher.quoteReplacement(result));
 			}
-		}else{
-			addModeData(block, "{}");
+			m.appendTail(sb);
+			attrHTML = Matcher.quoteReplacement(sb.toString());
+			m1.appendReplacement(sb1, attrHTML);
 		}
-		if(src!=null&&src!=""){
-			src = replaceParamAsValue(src, true);
-			String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null, cookies);
-			block.setHtml(result);
-			renderDom(block);
-		}else{
-			String html = block.getInnerHtml();
-			html = html.replaceAll("jscript", "script");
-			block.setHtml(html);
-			renderDom(block);
+		m1.appendTail(sb1);
+		html = sb1.toString().trim();
+		//System.out.println(html+"-----2");
+		String id = block.getAttribute("id");
+		if (id != null) {
+			dataMap.put(id, source);
+			ArrayList<Element> waitBlocks = doc.querySelectorAll("block[wait=" + id + "]");
+			waitBlocks.forEach(item -> {
+				String waitAttr = item.getAttribute("wait");
+				String regex = id + " ?";
+				waitAttr = waitAttr.replaceAll(regex, "");
+				waitAttr = waitAttr.trim();
+				if (waitAttr.equals(""))
+					waitAttr = null;
+				item.setAttribute("wait", waitAttr);
+			});
 		}
-	}
-	private void renderDom(Block block){
-		String html = block.getHtml();
-		String data = block.getData();
-		if(html==null||data==null)return;
-		//System.out.println(data);
-		//System.out.println(dataMap.toString());
-		html = replaceParamAsValue(html, false);
-		String out = LazyScriptEngine.run(html, data, null);
-		//System.out.println("---"+block.getAttrHtml()+"------"+out);
-		block.setOutHtml(out);
-		//block=null;
-		//checkBlocks();
-		continueCheck = true;
+		/*for(int i=0; i<pathnames.length; i++){
+			System.out.println("pathnames: "+i+"=>"+pathnames[i]);
+		}*/
+		//System.out.println(html+"-----"+source);
+		String result = LazyScriptEngine.run(html, source, pathnames, query, dataMap);
+		if (result != null) {
+			for (Entry<String, String> entry : blockChildren.entrySet()) {
+				result = result.replace(entry.getKey(), entry.getValue());
+			}
+			// console.log(result);
+			block.setOuterHTML(result);
+			return parseBlock();
+		}else{
+			return false;
+		}
 	}
 }

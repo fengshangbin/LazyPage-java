@@ -2,6 +2,7 @@ package com.c3.lazypage.filter;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.util.Date;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,12 +21,14 @@ import javax.servlet.http.HttpServletResponse;
 import com.c3.lazypage.LazyPage;
 import com.c3.lazypage.analyze.AnalyzeHtml;
 import com.c3.lazypage.analyze.JsonHashMap;
-import com.c3.lazypage.query.QueryHelp;
+import com.c3.lazypage.entity.Element;
+import com.c3.lazypage.entity.FastDom;
 import com.c3.lazypage.query.QueryLazyPage;
 
 public class LazyPageFilter implements Filter {
-	//protected static final Logger LOG = Logger.getLogger(LazyPageFilter.class);
-	
+	// protected static final Logger LOG =
+	// Logger.getLogger(LazyPageFilter.class);
+
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
 
@@ -37,6 +40,7 @@ public class LazyPageFilter implements Filter {
 		HttpServletRequest request = (HttpServletRequest) req;
 		String serverPath = request.getServletPath().toLowerCase();
 		String fileName = serverPath.substring(serverPath.lastIndexOf("/")+1);
+		
 		//request.getHeader(arg0);
 		if(fileName.indexOf(".")>0){
 			if(!fileName.endsWith(".html")){
@@ -57,6 +61,7 @@ public class LazyPageFilter implements Filter {
 			request.getRequestDispatcher(serverPath+"index.html").forward(req, resp);
 			return;
 		}
+		//System.out.println(serverPath +"|"+ fileName+"|"+LazyPage.htmlPaths.contains(serverPath));
 		if(! LazyPage.htmlPaths.contains(serverPath)){
 			for (Entry<String, String> e: LazyPage.map) {
 				//System.out.println(e.getKey()+":"+e.getValue());
@@ -64,7 +69,7 @@ public class LazyPageFilter implements Filter {
 				Pattern pattern = Pattern.compile(route, Pattern.CASE_INSENSITIVE);
 				Matcher isUrl = pattern.matcher(serverPath);
 				if(isUrl.matches()){
-					int count = isUrl.groupCount();
+					/*int count = isUrl.groupCount();
 					String[] group = null;
 					if(count>0){
 						group = new String[count];
@@ -75,7 +80,7 @@ public class LazyPageFilter implements Filter {
 					if(group != null){
 						request.setAttribute("lazypage_group", group);
 						//request.setAttribute("lazypage_route", route);
-					}
+					}*/
 					String realPath = e.getValue().replaceAll("\\+", "%2B");
 					//String realPath = URLDecoder.decode(e.getValue(), "utf-8");
 					String query = request.getQueryString();
@@ -89,76 +94,68 @@ public class LazyPageFilter implements Filter {
 			chain.doFilter(req, resp);
 			return;
 		}
-		HttpServletResponse response = (HttpServletResponse) resp;
-		ResponseWrapper respWrapper = new ResponseWrapper(response);
-		chain.doFilter(req, respWrapper);
-		byte[] content = respWrapper.getContent();
-		if (content.length > 0) {
-			String outString = new String(content, "UTF-8");
-			//boolean lazyPageSpider = false;
-			Cookie[] cookies = request.getCookies();
-			/*if(cookies!=null){
-		    	for (Cookie cookie : cookies) {
-		    		if(cookie.getName().equals("LazyPageSpider")){
-		    			lazyPageSpider = true;
-			 			break;
-		    		}
-		    	}
-	    	}*/
 
-			Object lazypageGroup = request.getAttribute("lazypage_group");
-			String[] pathParams = null;
-			if(lazypageGroup!=null){
-				pathParams = (String[])lazypageGroup;
-				//String lazypageRoute = (String)request.getAttribute("lazypage_route");
-				/*if(pathParams!=null){
-					String pathStr = "[\""+String.join("\",\"", pathParams)+"\"]";
-					int bodyEnd = outString.lastIndexOf("</body>");
-					if(bodyEnd>0){
-						outString = outString.substring(0, bodyEnd)+"<script>LazyPage.pathParams="+pathStr+";</script>\n"+outString.substring(bodyEnd);
-					}else{
-						outString += "\n<script>LazyPage.pathParams="+pathStr+"</script>";
-					}
-					//LazyPage.pathReg='"+lazypageRoute+"';
-				}*/
-			}
-			
-			//if(lazyPageSpider == false){
+		HtmlResponseWrapper capturingResponseWrapper = new HtmlResponseWrapper((HttpServletResponse) resp);
+
+		chain.doFilter(req, capturingResponseWrapper);
+		if (resp.getContentType() != null && resp.getContentType().contains("text/html")) {
+			resp.setCharacterEncoding("UTF-8");
+			HttpServletResponse response = (HttpServletResponse) resp;
+			response.setHeader("ETag", Math.round(Math.random() * 100000) + "-" + new Date().getTime());
+			response.setDateHeader("Last-Modified", new Date().getTime());
+			Cookie[] cookies = request.getCookies();
+			String content = capturingResponseWrapper.getCaptureAsString();
+			String replacedContent = "";
 			Object lazypageQuery = request.getAttribute("lazypage_query");
 			String query = lazypageQuery!=null?lazypageQuery.toString():request.getQueryString();
 			if(query!=null)query=URLDecoder.decode(query, "utf-8");
 			//System.out.println("query:"+query);
 			Object lazypageUrl = request.getAttribute("lazypage_url");
 	    	String url = lazypageUrl!=null?lazypageUrl.toString():request.getRequestURL().toString();
-			outString = new AnalyzeHtml().parse(url, query, outString, pathParams, cookies);
-			//}
+	    	//System.out.println(url +"|"+ query +"|"+ content);
+			FastDom dom = new AnalyzeHtml().parse(url, query, content, cookies);
 			
-			String lazypageTargetSelector = AnalyzeHtml.getQueryString(query, "lazypageTargetSelector");
+			String lazypageTargetSelector = getQueryString(query, "lazypageTargetSelector");
 			if(lazypageTargetSelector.length()>0){
-				String block = QueryLazyPage.queryLazyPageSelector(outString, lazypageTargetSelector);
+				Element block = QueryLazyPage.queryLazyPageSelector(dom, lazypageTargetSelector);
 				
 				JsonHashMap<String, Object> dataMap = new JsonHashMap<String, Object>();
-				dataMap.put("block", block);
+				dataMap.put("block", block!=null ? block.getOuterHTML().replaceAll(" lazypagelevel\\d", "") : null);
 				dataMap.put("hasTargetLazyPage", block != null);
 	            if (block!=null) {
-	        	    dataMap.put("title", QueryHelp.querySelector(outString, "title"));
+	        	    dataMap.put("title", dom.querySelector("title").getInnerHTML());
 	            }
-	          outString = dataMap.toString();
+	            replacedContent = dataMap.toString();
 	          //System.out.print(outString);
+			}else{
+				replacedContent = dom.getHTML().replaceAll("(\r|\n)( *(\r|\n))+", "\r");
 			}
 			
-			byte[] outByte = outString.getBytes("UTF-8");
+			byte[] outByte = replacedContent.getBytes("UTF-8");
 			response.setCharacterEncoding("UTF-8");
 	    	response.setContentType("text/html");
 			response.setContentLength(outByte.length);
 			ServletOutputStream out = response.getOutputStream();
             out.write(outByte);
             out.flush();
+			//resp.getWriter().write(replacedContent);
 		}
 	}
 
 	@Override
 	public void destroy() {
 
+	}
+
+	public static String getQueryString(String query, String name) {
+		if (query == null)
+			return "";
+		String reg = "(^|&)" + name + "=([^&]*)(&|$)";
+		Pattern pattern = Pattern.compile(reg, Pattern.CASE_INSENSITIVE);
+		Matcher m = pattern.matcher(query);
+		if (m.find()) {
+			return m.group(2);
+		}
+		return "";
 	}
 }

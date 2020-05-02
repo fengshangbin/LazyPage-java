@@ -3,20 +3,32 @@ package com.c3.lazypage.query;
 /*!
  *  QueryHelp.java 
  *  by fengshangbin 2019-06-28 
- *  ÕýÔòÆ¥Åä HTML Ç¶Ì×ÔªËØ
+ *  ï¿½ï¿½ï¿½ï¿½Æ¥ï¿½ï¿½ HTML Ç¶ï¿½ï¿½Ôªï¿½ï¿½
  */
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.c3.lazypage.entity.Element;
+import com.c3.lazypage.entity.FastDom;
+import com.c3.lazypage.entity.QueryInterface;
+
 class MoreRegs {
 	int index;
 	String regStr;
+	boolean exclude;
 
 	public MoreRegs(int index, String regStr) {
 		this.index = index;
 		this.regStr = regStr;
+		this.exclude = false;
+	}
+
+	public MoreRegs(int index, String regStr, boolean exclude) {
+		this.index = index;
+		this.regStr = regStr;
+		this.exclude = exclude;
 	}
 
 	@Override
@@ -40,26 +52,53 @@ class Option {
 	}
 }
 
+class Regs {
+	String regStr;
+	String attrRegs;
+	String classRegs;
+
+	public Regs(String regStr, String attrRegs, String classRegs) {
+		super();
+		this.regStr = regStr;
+		this.attrRegs = attrRegs;
+		this.classRegs = classRegs;
+	}
+}
+
+class CloseResult {
+	int index;
+	int len;
+	
+	public CloseResult(int index, int len) {
+		super();
+		this.index = index;
+		this.len = len;
+	}
+}
+
 public class QueryHelp {
-	private static Object querySelectorElement(String html, String regStr, boolean multiElement) {
-		regStr = encodEscapeWord(regStr);
+	private static Object querySelectorElement(QueryInterface parent, String regStr, boolean multiElement) {
+		regStr = encodEscapeWord(regStr.trim());
 		String[] regArr = regStr.split(" ");
 		Object source = new ArrayList<String>();
-		((ArrayList<String>) source).add(html);
+		((ArrayList<QueryInterface>) source).add(parent);
 		int index = 0;
-		while (index < regArr.length) {//source != null &&  ((ArrayList<String>) source).size() > 0 && 
-			if (regArr[index].length() > 0) {
-				source = queryBlock((ArrayList<String>) source, regArr[index], index == regArr.length - 1, multiElement);
-			}
-			if(index < regArr.length - 1 || multiElement){
-				if(((ArrayList<String>)source).size()==0)break;
+		while (index < regArr.length && source != null) {
+			source = queryBlock((ArrayList<QueryInterface>) source, regArr[index], index == regArr.length - 1,
+					multiElement);
+			if (index < regArr.length - 1 || multiElement) {
+				if (((ArrayList<String>) source).size() == 0)
+					break;
 			}
 			index++;
+		}
+		if (!multiElement && source instanceof ArrayList) {
+			return null;
 		}
 		return source;
 	}
 
-	private static Object queryBlock(ArrayList<String> source, String regStr, boolean last, boolean multiElement) {
+	private static Regs parseRegStr(String regStr) {
 		String attrRegs = "";
 		String attrReg = "\\[[^\\]]*\\]";
 		Matcher group = Pattern.compile(attrReg).matcher(regStr);
@@ -82,27 +121,51 @@ public class QueryHelp {
 			classRegs += group3.group(0);
 		}
 		regStr = regStr.replaceAll(classReg, "");
+		return new Regs(regStr, attrRegs, classRegs);
+	}
+
+	private static Object queryBlock(ArrayList<QueryInterface> source, String regStr, boolean last,
+			boolean multiElement) {
+		Option option = new Option(!last || multiElement, new ArrayList<MoreRegs>());
+		boolean needClassMark = false;
+
+		String notReg = ":not\\((.*?)\\)";
+		Matcher group = Pattern.compile(notReg).matcher(regStr);
+		;
+		while (group.find()) {
+			Regs result = parseRegStr(group.group(1));
+			if (result.attrRegs.length() > 0)
+				option.moreRegs.add(new MoreRegs(2, buildAttrReg(result.attrRegs), true));
+			if (result.classRegs.length() > 0) {
+				option.moreRegs.add(new MoreRegs(3, buildClassReg(result.classRegs), true));
+				needClassMark = true;
+			}
+		}
+		regStr = regStr.replaceAll(notReg, "");
+
+		Regs result = parseRegStr(regStr);
+		if (result.attrRegs.length() > 0)
+			option.moreRegs.add(new MoreRegs(2, buildAttrReg(result.attrRegs)));
+		if (result.classRegs.length() > 0) {
+			option.moreRegs.add(new MoreRegs(3, buildClassReg(result.classRegs)));
+			needClassMark = true;
+		}
+		regStr = result.regStr;
 
 		String tagReg = regStr.trim();
 		if (tagReg.length() == 0)
 			tagReg = "[^ >]*";
-		String classRegsMark = classRegs.length() > 0 ? "[^>]*?\\bclass *= *\"([^\"]*)\"" : "";
+		String classRegsMark = needClassMark ? "[^>]*?\\bclass *= *\"([^\"]*)\"" : "";
 		regStr = "< *(" + tagReg + ")(" + classRegsMark + "[^>]*)>";
 
-		ArrayList<MoreRegs> moreRegs = new ArrayList<MoreRegs>();
-		Option option = new Option(!last || multiElement, moreRegs);
-		if (attrRegs.length() > 0)
-			moreRegs.add(new MoreRegs(2, buildAttrReg(attrRegs)));
-		if (classRegs.length() > 0)
-			moreRegs.add(new MoreRegs(3, buildClassReg(classRegs)));
 		ArrayList<String> resultAll = new ArrayList<String>();
 		for (int i = 0; i < source.size(); i++) {
-			Object result = queryElement(regStr, source.get(i), option);
+			Object result2 = queryElement(regStr, source.get(i), option);
 			if (!option.multiElement) {
-				if (result != null || i == source.size() - 1)
-					return result;
+				if (result2 != null || i == source.size() - 1)
+					return result2;
 			} else
-				resultAll.addAll((ArrayList<String>) result);
+				resultAll.addAll((ArrayList<String>) result2);
 		}
 		return resultAll;
 	}
@@ -142,7 +205,7 @@ public class QueryHelp {
 		return classReg;
 	}
 
-	private static Object getElementByAttr(String html, String attrs, boolean multiElement) {
+	private static Object getElementByAttr(QueryInterface html, String attrs, boolean multiElement) {
 		ArrayList<MoreRegs> moreRegs = new ArrayList<MoreRegs>();
 		moreRegs.add(new MoreRegs(2, buildAttrReg(attrs)));
 		Option option = new Option(multiElement, moreRegs);
@@ -169,10 +232,25 @@ public class QueryHelp {
 		return attrReg;
 	}
 
-	private static Object queryElement(String regStr, String html, Option option) {
+	private static Object queryElement(String regStr, QueryInterface parent, Option option) {
 		// System.out.println(option);
+		int parentStart = 0;
+		String html = null;
+		FastDom dom = null;
+		if (parent instanceof FastDom) {
+			parentStart = 0;
+			html = ((FastDom) parent).getHTML();
+			dom = (FastDom) parent;
+		} else if (parent instanceof Element) {
+			parentStart = ((Element) parent).getStart() + ((Element) parent).getAttrLen();
+			html = ((Element) parent).getInnerHTML();
+			dom = ((Element) parent).getDom();
+		} else {
+			throw new Error("æŸ¥è¯¢ä¸»ä½“å¿…é¡»æ˜¯Fastdomæˆ–è€…Element");
+		}
+
 		Pattern match = Pattern.compile(regStr, Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
-		ArrayList<String> result = new ArrayList<String>();
+		ArrayList<Element> result = new ArrayList<Element>();
 		Matcher group = match.matcher(html);
 		while (group.find()) {
 			if (option.moreRegs != null && option.moreRegs.size() > 0) {
@@ -181,21 +259,31 @@ public class QueryHelp {
 					String moreContent = group.group(option.moreRegs.get(i).index);
 					Pattern moreMatch = Pattern.compile(option.moreRegs.get(i).regStr,
 							Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
-					moreState = moreState && moreMatch.matcher(moreContent).find();
+					boolean matchResult = moreMatch.matcher(moreContent).find();
+			        if (option.moreRegs.get(i).exclude) matchResult = !matchResult;
+			        moreState = moreState && matchResult;
 				}
 				if (!moreState)
 					continue;
 			}
-			int searchStart = group.end();
-			int closeIndex = 0;
-			if (Pattern.compile("\\/ *>").matcher(group.group(0)).find() == false) {
-				closeIndex = queryCloseTag(group.group(1), html.substring(searchStart));
-			}
-			String targetHtml = html.substring(group.start(), searchStart + closeIndex);
+			Element el = dom.findElement(group.start());
+		    if (el == null) {
+				int searchStart = group.end();
+				int closeIndex = 0;
+				int closeLen = 0;
+				if (Pattern.compile("\\/ *>").matcher(group.group(0)).find() == false) {
+					CloseResult closeObj = queryCloseTag(group.group(1), html.substring(searchStart));
+					closeIndex = closeObj.index;
+			        closeLen = closeObj.len;
+				}
+				String targetHtml = html.substring(group.start(), searchStart + closeIndex);
+				el = new Element(dom, group.start() + parentStart, searchStart + closeIndex + parentStart, targetHtml, group.group(0).length(), closeLen);
+			      dom.addElement(el);
+		    }
 			if (!option.multiElement) {
-				return targetHtml;
+				return el;
 			} else {
-				result.add(targetHtml);
+				result.add(el);
 			}
 		}
 		if (result.isEmpty() && !option.multiElement)
@@ -203,7 +291,7 @@ public class QueryHelp {
 		return result;
 	}
 
-	public static int queryCloseTag(String tag, String html) {
+	public static CloseResult queryCloseTag(String tag, String html) {
 		String regStrAll = "< */? *" + tag + "[^>]*>";
 		Pattern matchAll = Pattern.compile(regStrAll, Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
 
@@ -212,6 +300,7 @@ public class QueryHelp {
 
 		int openCount = 1;
 		int lastCloseIndex = 0;
+		int closeLen = 0;
 		Matcher groupAll = matchAll.matcher(html);
 		while (openCount > 0) {
 			boolean findAll = groupAll.find();
@@ -221,58 +310,57 @@ public class QueryHelp {
 				if (matchClose.matcher(groupAll.group(0)).matches()) {
 					openCount--;
 					lastCloseIndex = groupAll.end();
+					closeLen = groupAll.group(0).length();
 				} else {
 					openCount++;
 					if (Pattern.compile("\\b" + tag + "\\b", Pattern.CASE_INSENSITIVE).matcher("input br image").find())
-						return 0;
+						return new CloseResult(0, 0);
 				}
 			}
 		}
-		return lastCloseIndex;
+		return new CloseResult(lastCloseIndex, closeLen);
 	}
 
-	public static String getElementById(String html, String id) {
-		return (String) getElementByAttr(html, "[id=" + id + "]", false);
+	public static Element getElementById(QueryInterface html, String id) {
+		return (Element) getElementByAttr(html, "[id=" + id + "]", false);
 	};
 
-	public static ArrayList<String> getElementsByTag(String html, String tag) {
+	public static ArrayList<Element> getElementsByTag(QueryInterface html, String tag) {
 		String regStr = "< *(" + tag + ")[^>]*>";
-		return (ArrayList<String>) queryElement(regStr, html, new Option(true, null));
+		return (ArrayList<Element>) queryElement(regStr, html, new Option(true, null));
 	};
 
-	public static ArrayList<String> getElementsByClass(String html, String classNames) {
+	public static ArrayList<Element> getElementsByClass(QueryInterface html, String classNames) {
 		ArrayList<MoreRegs> moreRegs = new ArrayList<MoreRegs>();
 		moreRegs.add(new MoreRegs(2, buildClassReg(classNames)));
 		Option option = new Option(true, moreRegs);
 		String regStr = "< *([^ >]*)[^>]*?\\bclass *= *\"([^\"]*)\"[^>]*>";
-		return (ArrayList<String>) queryElement(regStr, html, option);
+		return (ArrayList<Element>) queryElement(regStr, html, option);
 	};
 
-	public static String querySelector(String html, String regStr) {
-		return (String) querySelectorElement(html, regStr, false);
+	public static Element querySelector(QueryInterface html, String regStr) {
+		return (Element) querySelectorElement(html, regStr, false);
 	};
 
-	public static ArrayList<String> querySelectorAll(String html, String regStr) {
-		return (ArrayList<String>) querySelectorElement(html, regStr, true);
+	public static ArrayList<Element> querySelectorAll(QueryInterface html, String regStr) {
+		return (ArrayList<Element>) querySelectorElement(html, regStr, true);
 	};
 
 	public static void main(String[] args) throws Exception {
-
-		String result = QueryHelp.getElementById("123<input id=\"test\">zhende<br/><br/><br></input>321", "test");
+		FastDom dom = new FastDom("123<input id=\"test\" class=\"test\">zhende<br/><br/><br></input>321"); 
+		Element result = dom.getElementById("test");
 		System.out.println(result);
 
-		ArrayList<String> result2 = QueryHelp
-				.getElementsByTag("123<input class=\"haha test\">zhende<br/><br/><br></input>321", "input");
+		ArrayList<Element> result2 = dom.getElementsByTag("input");
 		System.out.println(result2);
 
-		ArrayList<String> result3 = QueryHelp
-				.getElementsByClass("123<input class=\"haha test\">zhende<br/><br/><br></input>321", "test");
+		ArrayList<Element> result3 = dom.getElementsByClass("test");
 		System.out.println(result3);
-		
-		String result4 = QueryHelp.querySelector("123<input id=\"test\">zhende<br/><br/><br></input>321", "input#test br");
+
+		Element result4 = dom.querySelector("input#test br");
 		System.out.println(result4);
-		
-		ArrayList<String> result5 = QueryHelp.querySelectorAll("123<input id=\"test\">zhende<br/><br/><br></input>321", "input#test br");
+
+		ArrayList<Element> result5 = dom.querySelectorAll("input#test br");
 		System.out.println(result5);
 	}
 }
