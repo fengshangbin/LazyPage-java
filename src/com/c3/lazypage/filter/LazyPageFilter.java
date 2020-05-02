@@ -120,7 +120,7 @@ public class LazyPageFilter implements Filter {
 				Element block = QueryLazyPage.queryLazyPageSelector(dom, lazypageTargetSelector);
 				
 				JsonHashMap<String, Object> dataMap = new JsonHashMap<String, Object>();
-				dataMap.put("block", block!=null ? block.getOuterHTML().replaceAll(" lazypagelevel\\d", "") : null);
+				dataMap.put("block", block!=null ? block.getOuterHTML().replaceAll(" lazypagelevel\\d", "").replaceAll("(\r|\n)( *(\r|\n))+", "\r") : null);
 				dataMap.put("hasTargetLazyPage", block != null);
 	            if (block!=null) {
 	        	    dataMap.put("title", dom.querySelector("title").getInnerHTML());

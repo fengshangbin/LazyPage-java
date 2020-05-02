@@ -32,7 +32,7 @@ public class JsonHashMap<K,V> extends HashMap<K, V> {
             sb.append(":");
             if(isString){
             	sb.append("\"");
-            	sb.append(((String)value).replaceAll("\"", "\\\\\""));
+            	sb.append(((String)value).replaceAll("\"", Matcher.quoteReplacement("\\\"")).replaceAll("\n", Matcher.quoteReplacement("\\n")).replaceAll("\r", Matcher.quoteReplacement("\\r")).replaceAll("	", "    "));
             	sb.append("\"");
             }else{
             	sb.append(value);
