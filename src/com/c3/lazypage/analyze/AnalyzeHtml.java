@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 import javax.servlet.http.Cookie;
 
+import com.c3.lazypage.LazyPage;
 import com.c3.lazypage.entity.Element;
 import com.c3.lazypage.entity.FastDom;
 
@@ -49,7 +50,7 @@ public class AnalyzeHtml {
 		doc = new FastDom(html);
 		this.rootPath = getRootPath(path);
 		path = path.replaceAll("(" + rootPath + "/?)", "");
-		this.pathnames = path.split("/");
+		this.pathnames = path.replaceFirst("(?i)"+LazyPage.ignorePath+"/?", "").split("/");
 		// if(LazyPage.host!=null)this.rootPath=LazyPage.host;
 		if (path.endsWith("/"))
 			path += "end";
@@ -142,7 +143,7 @@ public class AnalyzeHtml {
 		}
 		String html = block.getInnerHTML();
 		//System.out.println(html+"-----1");
-		String regStr1 = "<.*? +:[\\w-_]*? *= *\".*?\" *.*?>";
+		String regStr1 = "<[^>]* +:[\\w-_]*? *= *\".*?\" *[^>]*>";
 		Pattern pattern1 = Pattern.compile(regStr1, Pattern.MULTILINE);
 		Matcher m1 = pattern1.matcher(html);
 		StringBuffer sb1 = new StringBuffer();

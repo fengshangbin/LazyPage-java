@@ -3,7 +3,7 @@ package com.c3.lazypage.query;
 /*!
  *  QueryHelp.java 
  *  by fengshangbin 2019-06-28 
- *  ï¿½ï¿½ï¿½ï¿½Æ¥ï¿½ï¿½ HTML Ç¶ï¿½ï¿½Ôªï¿½ï¿½
+ *  ÕýÔòÆ¥Åä HTML Ç¶Ì×ÔªËØ
  */
 
 import java.util.ArrayList;
@@ -154,7 +154,7 @@ public class QueryHelp {
 
 		String tagReg = regStr.trim();
 		if (tagReg.length() == 0)
-			tagReg = "[^ >]*";
+			tagReg = "[^ >\n\r]*";
 		String classRegsMark = needClassMark ? "[^>]*?\\bclass *= *\"([^\"]*)\"" : "";
 		regStr = "< *(" + tagReg + ")(" + classRegsMark + "[^>]*)>";
 
@@ -209,7 +209,7 @@ public class QueryHelp {
 		ArrayList<MoreRegs> moreRegs = new ArrayList<MoreRegs>();
 		moreRegs.add(new MoreRegs(2, buildAttrReg(attrs)));
 		Option option = new Option(multiElement, moreRegs);
-		String regStr = "< *([^ >]*)\\b([^>]*)>";
+		String regStr = "< *([^ >\n\r]*)\\b([^>]*)>";
 		return queryElement(regStr, html, option);
 	}
 
@@ -246,7 +246,7 @@ public class QueryHelp {
 			html = ((Element) parent).getInnerHTML();
 			dom = ((Element) parent).getDom();
 		} else {
-			throw new Error("æŸ¥è¯¢ä¸»ä½“å¿…é¡»æ˜¯Fastdomæˆ–è€…Element");
+			throw new Error("²éÑ¯Ö÷Ìå±ØÐëÊÇFastDom»òÕßElement");
 		}
 
 		Pattern match = Pattern.compile(regStr, Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);

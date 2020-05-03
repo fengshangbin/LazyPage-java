@@ -160,6 +160,7 @@ public class LazyPage {
 	}
 	
 	public static HashMap<String, String> mapping = new HashMap<String, String>();
+	public static String ignorePath = "";
 	private static void loadconfig(String rootPath) {
 		File file = new File(rootPath, "config.json");
 		if(file.exists()){
@@ -195,10 +196,9 @@ public class LazyPage {
 					+ "for(var i=0; i<mapping.length; i++){ "
 					+ "var map = mapping[i]; "
 					+ "if(map.from && map.to){ "
-					+ "result.push(map.from); result.push(map.to); "
-					+ "} "
-					+ "}; "
-					+ "return result.join();}; ");
+					+ "result.push(map.from); result.push(map.to);}}; "
+					+ "return result.join();}; "
+					+ "function getIgnorePath(){ return configJSON.ignorePath ? configJSON.ignorePath : '' };");
 	        try {
 	        	engine.eval(sb.toString());
 				invokeEngine = (Invocable)engine;
@@ -238,6 +238,13 @@ public class LazyPage {
 		        		mapping.put(maps[i], maps[i+1]);
 		        	}
 	        	}
+	        } catch (Exception e) {
+				e.printStackTrace();
+			}
+	        try {
+	        	ignorePath = (String)invokeEngine.invokeFunction("getIgnorePath");
+	        	if(ignorePath.startsWith("/"))ignorePath=ignorePath.substring(1);
+	        	if(ignorePath.endsWith("/"))ignorePath=ignorePath.substring(0, ignorePath.length()-1);
 	        } catch (Exception e) {
 				e.printStackTrace();
 			}
