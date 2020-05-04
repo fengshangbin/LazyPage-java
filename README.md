@@ -12,8 +12,6 @@ GitHub Pages: https://github.com/fengshangbin/LazyPage-java
 
 1，引入 lazypage.jar 到你的项目  
 2，在项目初始化时 执行 LazyPage 初始化 LazyPage.init(context)  
-3, 注册全局格式化函数 LazyPage.addJsFile("/js/format.js");  
-4, 如果后端访问资源路径和前端不一致（如经过 ngnix 转发），可以调用 LazyPage.host(realhost)来设置后端访问资源的 host  
 注: 需要 Java EE version -> JavaEE 7 - Web 3.1
 
 ### LazyPage 类方法说明
@@ -26,12 +24,6 @@ GitHub Pages: https://github.com/fengshangbin/LazyPage-java
  * @param  scanChildrenDirectory  是否扫描子目录中的html文件，默认为false
  */
 void init(ServletContext context, String htmlPath, boolean scanChildrenDirectory)
-
-/**
- * 注册全局脚本文件，请在web初始化时调用
- * @param  jsPath  脚本文件路径
- */
-void addJsFile(String jsPath)
 ```
 
 ### LazyPage-java 使用示例
@@ -51,8 +43,6 @@ public class MyContextListener implements ServletContextListener{
 	public void contextInitialized(ServletContextEvent sce) {
 		// TODO Auto-generated method stub
 		ServletContext context = sce.getServletContext();
-		String rootPath = context.getRealPath("");
-		LazyPage.addJsFile(rootPath+"/js/format.js");
 		LazyPage.init(context);
 	}
 
