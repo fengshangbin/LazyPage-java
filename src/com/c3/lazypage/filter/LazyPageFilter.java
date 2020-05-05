@@ -51,7 +51,7 @@ public class LazyPageFilter implements Filter {
 				return;
 			}
 		}
-		//System.out.println("serverPath:"+serverPath);
+		//System.out.println("lazypage_url:"+request.getRequestURL().toString());
 		//LOG.info("serverPath:"+serverPath);
 		if(serverPath.endsWith("/") && LazyPage.htmlPaths.contains(serverPath+"index.html")){
 			String query = request.getQueryString();

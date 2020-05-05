@@ -32,8 +32,8 @@ public class LazyHttpProxy {
 		}
 		//System.out.println(String.join("/", paths));
 		System.out.println(getRealUrl(rootPath, paths, "/a1.data"));
-		String result = ajax(rootPath, paths, null, "", null, null);
-		System.out.println(result);
+		//String result = ajax(rootPath, paths, null, "", null, null);
+		//System.out.println(result);
 	}
 	private static String getRealUrl(String rootPath, String[] paths, String url){
 		if(checkUrl(url))return url;
@@ -77,7 +77,7 @@ public class LazyHttpProxy {
 		}
 		return null;
 	}
-	public static String ajax(String rootPath, String[] paths, String method, String urlString, String parameters, Cookie[] cookies) {
+	public static String ajax(String rootPath, String[] paths, String method, String urlString, String parameters, Cookie[] cookies) throws Exception {
 		/*System.out.println("rootPath: "+rootPath);
 		System.out.println("paths: "+String.join("/", paths));
 		System.out.println("ajax urlString: "+urlString);*/
@@ -99,7 +99,7 @@ public class LazyHttpProxy {
 			urlString +=urlString.indexOf("?")>0?"&":"?";
 			urlString += parameters;
 		}
-		try{
+		//try{
 			URL url = new URL(urlString);
 			urlConnection = (HttpURLConnection) url.openConnection();
 			urlConnection.setRequestMethod(method);
@@ -145,7 +145,7 @@ public class LazyHttpProxy {
 			}else{
 				throw new Exception("error on ajax "+urlString+": statusCode "+resultCode);
 			}
-		}catch (Exception e) {
+		/*}catch (Exception e) {
 			e.printStackTrace();
 		}finally {
 			if(urlConnection != null) urlConnection.disconnect();
@@ -159,12 +159,14 @@ public class LazyHttpProxy {
             }catch (IOException e){
                 e.printStackTrace();
             }
-		}
-		
-		if (temp != null) {
+		}*/
+			urlConnection.disconnect();
+			if(out != null)out.close();
+		return temp.toString();
+		/*if (temp != null) {
 			return temp.toString();
 		} else {
 			return null;
-		}
+		}*/
 	}
 }

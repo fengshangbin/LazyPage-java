@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.script.ScriptException;
 import javax.servlet.http.Cookie;
 
 import com.c3.lazypage.LazyPage;
@@ -50,7 +51,7 @@ public class AnalyzeHtml {
 		doc = new FastDom(html);
 		this.rootPath = getRootPath(path);
 		path = path.replaceAll("(" + rootPath + "/?)", "");
-		this.pathnames = path.replaceFirst("(?i)"+LazyPage.ignorePath+"/?", "").split("/");
+		this.pathnames = path.replaceFirst("(?i)"+"/?"+LazyPage.ignorePath+"/?", "").split("/");
 		// if(LazyPage.host!=null)this.rootPath=LazyPage.host;
 		if (path.endsWith("/"))
 			path += "end";
@@ -61,10 +62,16 @@ public class AnalyzeHtml {
 		this.query = query;
 		this.cookies = cookies;
 
-		boolean result = parseBlock();
-		// String result = doc.getHTML();
-		if(result)return doc;
-		else return new FastDom("server error");
+		try {
+			parseBlock();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return new FastDom(e.getMessage());
+		}
+		String result = doc.getHTML();
+		return doc;
+		//else return new FastDom("server error");
 	}
 
 	private static String getRootPath(String path) {
@@ -77,7 +84,7 @@ public class AnalyzeHtml {
 		return null;
 	}
 
-	private boolean parseBlock() {
+	private void parseBlock() throws Exception {
 		Element block = doc.querySelector("block:not([wait])");
 		if (block != null) {
 			String attrHTML = block.getAttrHTML();
@@ -95,7 +102,7 @@ public class AnalyzeHtml {
 			attrHTML = sb.toString();
 
 			attrHTML = LazyScriptEngine.run(attrHTML, "{}", pathnames, query, dataMap);
-			if (attrHTML == null) return false;
+			//if (attrHTML == null) return false;
 			block.setAttrHTML(attrHTML);
 
 			String source = block.getAttribute("source");
@@ -109,7 +116,7 @@ public class AnalyzeHtml {
 					String ajaxType = block.getAttribute("rquest-type");
 					String ajaxData = block.getAttribute("rquest-param");
 					source = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData, cookies);
-					if (source == null) return false;
+					//if (source == null) return false;
 				}
 			} else {
 				source = "{}";
@@ -118,17 +125,14 @@ public class AnalyzeHtml {
 			String src = block.getAttribute("src");
 			if (src != null && !src.equals("")) {
 				String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null, cookies);
-				if (result == null) return false;
-				else block.setInnerHTML(result);
+				//if (result == null) return false;
+				block.setInnerHTML(result);
 			}
-
-			return renderDom(block, source);
-		}else{
-			return true;
+			renderDom(block, source);
 		}
 	}
 
-	private boolean renderDom(Element block, String source) {
+	private void renderDom(Element block, String source) throws Exception {
 		//System.out.println("."+block.getOuterHTML()+"."+block.getInnerHTML()+".");
 		HashMap<String, String> blockChildren = new HashMap<String, String>();
 		Element blockChild = block.querySelector("block:not([mark])");
@@ -185,15 +189,11 @@ public class AnalyzeHtml {
 		}*/
 		//System.out.println(html+"-----"+source);
 		String result = LazyScriptEngine.run(html, source, pathnames, query, dataMap);
-		if (result != null) {
-			for (Entry<String, String> entry : blockChildren.entrySet()) {
-				result = result.replace(entry.getKey(), entry.getValue());
-			}
-			// console.log(result);
-			block.setOuterHTML(result);
-			return parseBlock();
-		}else{
-			return false;
+		for (Entry<String, String> entry : blockChildren.entrySet()) {
+			result = result.replace(entry.getKey(), entry.getValue());
 		}
+		// console.log(result);
+		block.setOuterHTML(result);
+		parseBlock();
 	}
 }

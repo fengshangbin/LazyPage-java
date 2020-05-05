@@ -93,13 +93,13 @@ public class LazyScriptEngine {
         }
     }
 	
-	public static String run(String html, String source, String[] path, String query, JsonHashMap blocks){
+	public static String run(String html, String source, String[] path, String query, JsonHashMap blocks) throws NoSuchMethodException, ScriptException{
 		String result = null;
-        try {
+        //try {
         	result = (String)getInvocable().invokeFunction("run", html, source, path, query, blocks.toString());
-        } catch (Exception e) {
+        /*} catch (Exception e) {
 			e.printStackTrace();
-		}
+		}*/
         return result;
 	}
 	
