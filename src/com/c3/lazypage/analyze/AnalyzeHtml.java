@@ -7,7 +7,6 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptException;
 import javax.servlet.http.Cookie;
 
 import com.c3.lazypage.LazyPage;
@@ -38,23 +37,28 @@ public class AnalyzeHtml {
 		 * analyzeHtml.parse("http://localhost:8080/J2EEWebTest/index.html",
 		 * "id=20", html, null, null); System.out.println(outHtml);
 		 */
-		String name = "q";
+		/*String name = "q";
 		String reg = "(^|&)" + name + "=([^&]*)(&|$)";
 		Pattern pattern = Pattern.compile(reg, Pattern.CASE_INSENSITIVE);
 		Matcher m = pattern.matcher("q=city");
 		if (m.find()) {
 			System.out.println(m.group(2));
-		}
+		}*/
+		String[] a = "1/2/3".split("/");
+		System.out.println(a.length);
 	}
 
 	public FastDom parse(String path, String query, String html, Cookie[] cookies) {
 		doc = new FastDom(html);
 		this.rootPath = getRootPath(path);
 		path = path.replaceAll("(" + rootPath + "/?)", "");
-		this.pathnames = path.replaceFirst("(?i)"+"/?"+LazyPage.ignorePath+"/?", "").split("/");
 		// if(LazyPage.host!=null)this.rootPath=LazyPage.host;
 		if (path.endsWith("/"))
 			path += "end";
+		this.pathnames = path.replaceFirst("(?i)"+"/?"+LazyPage.ignorePath+"/?", "").split("/");
+		if(pathnames[pathnames.length-1].equals("end")){
+			pathnames[pathnames.length-1]="";
+		}
 		this.paths = path.split("/");
 		if (paths.length > 0) {
 			paths = Arrays.copyOf(paths, paths.length - 1);
@@ -67,9 +71,9 @@ public class AnalyzeHtml {
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return new FastDom(e.getMessage());
+			return new FastDom(StringUtils.encodeHtml(e.getMessage()).replaceAll("\r|\n", "<br>"), true);//
 		}
-		String result = doc.getHTML();
+		//String result = doc.getHTML();
 		return doc;
 		//else return new FastDom("server error");
 	}
@@ -95,7 +99,7 @@ public class AnalyzeHtml {
 			while (m.find()) {
 				String p1 = m.group(1);
 				String p2 = m.group(2);
-				String result = p1 + "=\"{{" + p2 + "}}\"";
+				String result = p1 + "=\"{{@" + p2 + "}}\"";
 				m.appendReplacement(sb, Matcher.quoteReplacement(result));
 			}
 			m.appendTail(sb);
@@ -160,7 +164,7 @@ public class AnalyzeHtml {
 			while (m.find()) {
 				String p1 = m.group(1);
 				String p2 = m.group(2);
-				String result = p1 + "=\"{{" + p2 + "}}\"";
+				String result = p1 + "=\"{{@" + p2 + "}}\"";
 				m.appendReplacement(sb, Matcher.quoteReplacement(result));
 			}
 			m.appendTail(sb);

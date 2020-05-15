@@ -114,23 +114,26 @@ public class LazyPageFilter implements Filter {
 	    	String url = lazypageUrl!=null?lazypageUrl.toString():request.getRequestURL().toString();
 	    	//System.out.println(url +"|"+ query +"|"+ content);
 			FastDom dom = new AnalyzeHtml().parse(url, query, content, cookies);
-			
-			String lazypageTargetSelector = getQueryString(query, "lazypageTargetSelector");
-			if(lazypageTargetSelector.length()>0){
-				Element block = QueryLazyPage.queryLazyPageSelector(dom, lazypageTargetSelector);
-				
-				JsonHashMap<String, Object> dataMap = new JsonHashMap<String, Object>();
-				dataMap.put("block", block!=null ? block.getOuterHTML().replaceAll(" lazypagelevel\\d", "").replaceAll("(\r|\n)( *(\r|\n))+", "\r") : null);
-				dataMap.put("hasTargetLazyPage", block != null);
-	            if (block!=null) {
-	        	    dataMap.put("title", dom.querySelector("title").getInnerHTML());
-	            }
-	            replacedContent = dataMap.toString();
-	          //System.out.print(outString);
+			if(!dom.isError()){
+				String lazypageTargetSelector = getQueryString(query, "lazypageTargetSelector");
+				if(lazypageTargetSelector.length()>0){
+					Element block = QueryLazyPage.queryLazyPageSelector(dom, lazypageTargetSelector);
+					
+					JsonHashMap<String, Object> dataMap = new JsonHashMap<String, Object>();
+					dataMap.put("block", block!=null ? block.getOuterHTML().replaceAll(" lazypagelevel\\d", "").replaceAll("(\r|\n)( *(\r|\n))+", "\r") : null);
+					dataMap.put("hasTargetLazyPage", block != null);
+		            if (block!=null) {
+		        	    dataMap.put("title", dom.querySelector("title").getInnerHTML());
+		            }
+		            replacedContent = dataMap.toString();
+		          //System.out.print(outString);
+				}else{
+					replacedContent = dom.getHTML().replaceAll("(\r|\n)( *(\r|\n))+", "\r");
+				}
 			}else{
-				replacedContent = dom.getHTML().replaceAll("(\r|\n)( *(\r|\n))+", "\r");
+				if(LazyPage.debug) replacedContent = dom.getHTML();
+				else replacedContent = "server error";
 			}
-			
 			byte[] outByte = replacedContent.getBytes("UTF-8");
 			response.setCharacterEncoding("UTF-8");
 	    	response.setContentType("text/html");

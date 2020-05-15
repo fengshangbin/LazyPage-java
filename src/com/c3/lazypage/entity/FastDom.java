@@ -9,16 +9,25 @@ import com.c3.lazypage.query.QueryHelp;
 public class FastDom implements QueryInterface {
 
 	private String html;
-	
+	private boolean error = false;
 	public FastDom(String html) {
 		super();
 		this.html = html;
+	}
+	public FastDom(String html, boolean error) {
+		super();
+		this.html = html;
+		this.error = error;
 	}
 
 	private HashSet<Element> elements = new HashSet();
 
 	public String getHTML() {
 		return html;
+	}
+	
+	public boolean isError() {
+		return error;
 	}
 
 	public void addElement(Element el) {

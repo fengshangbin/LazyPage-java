@@ -1,7 +1,6 @@
 package com.c3.lazypage.analyze;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -95,6 +94,9 @@ public class LazyHttpProxy {
 		OutputStream out = null;
 		BufferedReader reader = null;
 		StringBuffer temp = null;
+		if(parameters!=null){
+			parameters = MyURIEncoder.encode(parameters, "utf-8");
+		}
 		if (method.equalsIgnoreCase("GET") && parameters != null) {
 			urlString +=urlString.indexOf("?")>0?"&":"?";
 			urlString += parameters;
@@ -106,8 +108,9 @@ public class LazyHttpProxy {
 			urlConnection.setDoOutput(true);
 			urlConnection.setDoInput(true);
 			urlConnection.setUseCaches(false);
-			urlConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-			urlConnection.setRequestProperty("Charset", "UTF-8");
+			urlConnection.setRequestProperty("Accept-Charset", "");
+			urlConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
+			//urlConnection.setRequestProperty("Charset", "UTF-8");
 			if(cookies!=null){
 				StringBuffer cookiesBuffer = new StringBuffer();
 				for (Cookie cookie : cookies) {

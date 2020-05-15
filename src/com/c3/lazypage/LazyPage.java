@@ -71,17 +71,12 @@ public class LazyPage {
 	 * LazyPage初始化方法，请在web初始化时调用如ServletContextListener实例的contextInitialized中
 	 * @param  context  Servlet上下文Context 为null时htmlPath需要绝对路径并且需要手动添加过滤器LazyPageFilter
 	 * @param  htmlPath  html文件所在目录，默认为web跟目录
-	 * @param  scanChildrenDirectory  是否扫描子目录中的html文件，默认为false
+	 * @param  scanChildrenDirectory  是否扫描子目录中的html文件，默认为true
 	 */
 	public static void init(ServletContext context, String htmlPath, boolean scanChildrenDirectory){
 		File file = new File(context==null ? htmlPath : context.getRealPath(htmlPath));
 		String rootPath = context==null ? htmlPath : context.getRealPath("");
-		/*rootPath = rootPath.replaceFirst("^/([a-zA-Z]){1}:", "$1:")
-				.replaceAll("%20"," ")
-				.replaceAll("/", "\\\\");*/
-		//System.out.println(rootPath);
 		//LOG.info("rootPath:"+rootPath);
-		
 		
 		loadconfig(rootPath);
 		filterHtmlByDirectory(rootPath, file, scanChildrenDirectory);
@@ -109,17 +104,6 @@ public class LazyPage {
                 return sort;
             }
         });
-		
-		/*map.forEach((key, value) -> {
-			//System.out.println(key+" - "+value);
-			LOG.info(key+" - "+value);
-		});*/
-		/*for (Map.Entry<String, String> mapping : map) {
-			LOG.info(mapping.getKey() + ":" + mapping.getValue());
-        }
-		htmlPaths.forEach(key -> {
-			LOG.info(key);
-		});*/
 		if(context!=null){
 			FilterRegistration.Dynamic dynamicFilter = context.addFilter("lazyPageFilter", LazyPageFilter.class);
 			EnumSet<DispatcherType> dispatcherTypes = EnumSet.allOf(DispatcherType.class);
@@ -128,14 +112,6 @@ public class LazyPage {
 			dynamicFilter.addMappingForUrlPatterns(dispatcherTypes, false, "/*"); //isMatchAfter
 		}
 	}
-
-	/**
-	 * 注册全局脚本文件，请在web初始化时调用
-	 * @param  jsPath  脚本文件路径
-	 */
-	/*public static void addJsFile(String jsPath){
-		jsPaths.add(jsPath);
-	}*/
 
 	private static void filterHtmlByDirectory(String rootPath, File directory, boolean scanChildrenDirectory){
 		if(directory.exists() && directory.isDirectory()){
@@ -161,6 +137,7 @@ public class LazyPage {
 	
 	public static HashMap<String, String> mapping = new HashMap<String, String>();
 	public static String ignorePath = "";
+	public static boolean debug = true;
 	private static void loadconfig(String rootPath) {
 		File file = new File(rootPath, "config.json");
 		if(file.exists()){
@@ -198,7 +175,8 @@ public class LazyPage {
 					+ "if(map.from && map.to){ "
 					+ "result.push(map.from); result.push(map.to);}}; "
 					+ "return result.join();}; "
-					+ "function getIgnorePath(){ return configJSON.ignorePath ? configJSON.ignorePath : '' };");
+					+ "function getIgnorePath(){ return configJSON.ignorePath ? configJSON.ignorePath : '' }; "
+					+ "function getDebug(){ return configJSON.debug != undefined ? configJSON.debug : true };");
 	        try {
 	        	engine.eval(sb.toString());
 				invokeEngine = (Invocable)engine;
@@ -245,6 +223,11 @@ public class LazyPage {
 	        	ignorePath = (String)invokeEngine.invokeFunction("getIgnorePath");
 	        	if(ignorePath.startsWith("/"))ignorePath=ignorePath.substring(1);
 	        	if(ignorePath.endsWith("/"))ignorePath=ignorePath.substring(0, ignorePath.length()-1);
+	        } catch (Exception e) {
+				e.printStackTrace();
+			}
+	        try {
+	        	debug = (boolean)invokeEngine.invokeFunction("getDebug");
 	        } catch (Exception e) {
 				e.printStackTrace();
 			}
