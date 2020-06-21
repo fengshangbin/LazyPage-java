@@ -68,7 +68,7 @@ public class LazyPageFilter implements Filter {
 				String route = e.getKey();
 				Pattern pattern = Pattern.compile(route, Pattern.CASE_INSENSITIVE);
 				Matcher isUrl = pattern.matcher(serverPath);
-				if(isUrl.matches()){
+				if(isUrl.matches() || (serverPath.endsWith("/") && pattern.matcher(serverPath+"index.html").matches())){
 					/*int count = isUrl.groupCount();
 					String[] group = null;
 					if(count>0){
