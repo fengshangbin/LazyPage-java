@@ -226,7 +226,7 @@ public class QueryHelp {
 			if (value == null) {
 				attrReg += "(?=.*?\\b" + key + "\\b)";
 			} else {
-				attrReg += "(?=.*?\\b" + key + " *= *\"?" + value + "\"?" + "\\b)";
+				attrReg += "(?=.*?\\b" + key + " *= *\"" + value + "\"" + "\\B)";
 			}
 		}
 		return attrReg;
