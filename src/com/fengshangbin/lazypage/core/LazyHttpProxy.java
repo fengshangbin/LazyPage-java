@@ -17,72 +17,9 @@ import javax.servlet.http.Cookie;
 import com.fengshangbin.lazypage.LazyPage;
 
 public class LazyHttpProxy {
-	public static void main(String[] args) {
-		String path = "https://www.baidu.com";
-		String rootPath = getRootPath(path);
-		path = path.replaceAll("("+rootPath+"/?)", "");
-		if(path.endsWith("/"))path+="end";
-		String[] paths = path.split("/");
-		/*System.out.println(path.replaceAll("("+rootPath+"/?)", ""));
-		System.out.println(String.join("/", path.replaceAll("("+rootPath+"/?)", "").split("/")));
-		System.out.println(path.replaceAll("("+rootPath+"/?)", "").split("/").length);*/
-		if(paths.length>0){
-			paths = Arrays.copyOf(paths, paths.length-1);
-		}
-		//System.out.println(String.join("/", paths));
-		System.out.println(getRealUrl(rootPath, paths, "/a1.data"));
-		//String result = ajax(rootPath, paths, null, "", null, null);
-		//System.out.println(result);
-	}
-	private static String getRealUrl(String rootPath, String[] paths, String url){
-		if(checkUrl(url))return url;
-		else{
-			if(url.startsWith("/")){
-				return rootPath+url;
-			}else if(url.startsWith("../")){
-				int count = 0;
-				while(url.startsWith("../")){
-					url = url.substring(3);
-					count++;
-				}
-				StringBuffer pathBuffer = new StringBuffer("/");
-				for(int i=0; i<paths.length-count; i++){
-					pathBuffer.append(paths[i]);
-				}
-				if(pathBuffer.length()>1)pathBuffer.append("/");
-				return rootPath+pathBuffer.toString()+url;
-			}else{
-				url = url.replaceAll("\\./", "");
-				String pathStr = String.join("/", paths);
-				if(pathStr.length()>0)pathStr+="/";
-				return rootPath+"/"+pathStr+url;
-			}
-		}
-	}
-	private static boolean checkUrl(String url){
-		String regex = "^((https|http|ftp|rtsp|mms)?://)(.*?)";
-		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		Matcher isUrl = pattern.matcher(url);
-		return isUrl.find();
-		//return isUrl.matches();
-	}
-	private static String getRootPath(String path){
-		String regex = "^((https|http|ftp|rtsp|mms)?://[^/]*)";
-		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		Matcher m = pattern.matcher(path);
-		if(m.find()){
-			//System.out.println(m.group(0)+"-"+m.group(1)+"-"+m.group(2));
-			return m.group(1);
-		}
-		return null;
-	}
-	public static String ajax(String rootPath, String[] paths, String method, String urlString, String parameters, Cookie[] cookies) throws Exception {
-		/*System.out.println("rootPath: "+rootPath);
-		System.out.println("paths: "+String.join("/", paths));
-		System.out.println("ajax urlString: "+urlString);*/
+	public static String ajax(String method, String urlString, String parameters, Cookie[] cookies) throws Exception {
 		if(method==null)method="GET";
 		method = method.toUpperCase();
-		urlString = getRealUrl(rootPath, paths, urlString);
 		
 		HashMap<String, String> mapping = LazyPage.mapping;
 		for (Entry<String, String> entry : mapping.entrySet()) {

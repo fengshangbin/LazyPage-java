@@ -16,10 +16,8 @@ import com.fengshangbin.lazypage.LazyPage;
 public class AnalyzeHtml {
 	private JsonHashMap<String, String> dataMap = new JsonHashMap<String, String>();
 	private FastDom doc;
-	private boolean continueCheck = false;
-	private String rootPath;
-	private String[] paths;
 	private String query;
+	private String path;
 	private String[] pathnames;
 	private Cookie[] cookies;
 
@@ -50,19 +48,8 @@ public class AnalyzeHtml {
 
 	public FastDom parse(String path, String query, String html, Cookie[] cookies) {
 		doc = new FastDom(html);
-		this.rootPath = getRootPath(path);
-		path = path.replaceAll("(" + rootPath + "/?)", "");
-		// if(LazyPage.host!=null)this.rootPath=LazyPage.host;
-		if (path.endsWith("/"))
-			path += "end";
-		this.pathnames = path.replaceFirst("(?i)"+"/?"+LazyPage.ignorePath+"/?", "").split("/");
-		if(pathnames[pathnames.length-1].equals("end")){
-			pathnames[pathnames.length-1]="";
-		}
-		this.paths = path.split("/");
-		if (paths.length > 0) {
-			paths = Arrays.copyOf(paths, paths.length - 1);
-		}
+		this.path = path;
+		this.pathnames = PathUtils.getPathsWithIgnorePath(path, LazyPage.ignorePath);
 		this.query = query;
 		this.cookies = cookies;
 
@@ -76,16 +63,6 @@ public class AnalyzeHtml {
 		//String result = doc.getHTML();
 		return doc;
 		//else return new FastDom("server error");
-	}
-
-	private static String getRootPath(String path) {
-		String regex = "^((https|http|ftp|rtsp|mms)?://[^/]*)";
-		Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		Matcher m = pattern.matcher(path);
-		if (m.find()) {
-			return m.group(1);
-		}
-		return null;
 	}
 
 	private void parseBlock() throws Exception {
@@ -119,7 +96,8 @@ public class AnalyzeHtml {
 				} else {
 					String ajaxType = block.getAttribute("rquest-type");
 					String ajaxData = block.getAttribute("rquest-param");
-					source = LazyHttpProxy.ajax(rootPath, paths, ajaxType, source, ajaxData, cookies);
+					String url = PathUtils.getFinalURL(path, source);
+					source = LazyHttpProxy.ajax(ajaxType, url, ajaxData, cookies);
 					//if (source == null) return false;
 				}
 			} else {
@@ -128,7 +106,8 @@ public class AnalyzeHtml {
 
 			String src = block.getAttribute("src");
 			if (src != null && !src.equals("")) {
-				String result = LazyHttpProxy.ajax(rootPath, paths, null, src, null, cookies);
+				String url = PathUtils.getFinalURL(path, src);
+				String result = LazyHttpProxy.ajax(null, url, null, cookies);
 				//if (result == null) return false;
 				block.setInnerHTML(result);
 			}
